@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - Panchayat{% endblock %}
+
+{% block extra_css %}
+<style>
+  .login-illustration {
+    position: relative;
+    margin-bottom: 30px;
+  }
+  
+  .login-illustration img {
+    width: 100%;
+    max-width: 300px;
+    animation: float 4s ease-in-out infinite;
+  }
+  
+  .divider {
+    display: flex;
+    align-items: center;
+    margin: 24px 0;
+  }
+  
+  .divider::before,
+  .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  
+  .divider span {
+    padding: 0 16px;
+    color: var(--gray);
+    font-size: 13px;
+  }
+  
+  .social-login {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  
+  .social-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--border);
+    background: var(--bg-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: var(--transition);
+  }
+  
+  .social-btn:hover {
+    border-color: var(--brand-primary);
+    background: var(--brand-ultra-light);
+    transform: translateY(-2px);
+  }
+  
+  .remember-forgot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  
+  .form-icon-wrapper {
+    position: relative;
+  }
+  
+  .form-icon-wrapper i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray-light);
+  }
+  
+  .form-icon-wrapper .form-control {
+    padding-left: 44px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-page">
+  <div class="login-card animate__animated animate__scaleIn" role="main" aria-labelledby="login-title">
+    <!-- Logo Section -->
+    <div class="login-logo">
+      <div class="login-logo-icon animate__animated animate__pulse animate__infinite">
+        <i class="fas fa-building"></i>
+      </div>
+      <h1 id="login-title">Panchayat</h1>
+      <p>Housing Society Management</p>
+    </div>
+    
+    <!-- Login Form -->
+    <form id="login-form" role="form" aria-describedby="login-error" novalidate>
+      <div class="form-group">
+        <label for="email" class="form-label">Email Address</label>
+        <div class="form-icon-wrapper">
+          <i class="fas fa-envelope"></i>
+          <input type="email" class="form-control" id="email" placeholder="Enter your email" required aria-required="true">
+        </div>
+        <div class="form-error d-none" id="email-error"></div>
+      </div>
+      
+      <div class="form-group">
+        <label for="password" class="form-label">Password</label>
+        <div class="form-icon-wrapper">
+          <i class="fas fa-lock"></i>
+          <input type="password" class="form-control" id="password" placeholder="Enter your password" required aria-required="true">
+        </div>
+        <div class="form-error d-none" id="password-error"></div>
+      </div>
+      
+      <div class="remember-forgot">
+        <div class="form-check">
+          <input type="checkbox" class="form-check-input" id="remember">
+          <label for="remember" class="form-check-label">Remember me</label>
+        </div>
+        <a href="#" class="text-small">Forgot password?</a>
+      </div>
+      
+      <button type="submit" class="btn btn-primary w-100 btn-lg" id="login-btn">
+        <i class="fas fa-sign-in-alt"></i> Sign In
+      </button>
+      
+      <div id="login-error" class="alert alert-danger d-none mt-3" role="alert"></div>
+    </form>
+    
+    <!-- Divider -->
+    <div class="divider">
+      <span>or</span>
+    </div>
+    
+    <!-- Register Link -->
+    <div class="text-center">
+      <p class="text-muted mb-2">Don't have an account?</p>
+      <a href="/register/" class="btn btn-outline">
+        <i class="fas fa-user-plus"></i> Register as Resident
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('login-form');
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const loginBtn = document.getElementById('login-btn');
+  const errorEl = document.getElementById('login-error');
+  
+  // Real-time validation
+  function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+  
+  function showError(input, message) {
+    const errorDiv = document.getElementById(input.id + '-error');
+    input.classList.add('is-invalid');
+    if (errorDiv) {
+      errorDiv.textContent = message;
+      errorDiv.classList.remove('d-none');
+    }
+  }
+  
+  function clearError(input) {
+    const errorDiv = document.getElementById(input.id + '-error');
+    input.classList.remove('is-invalid');
+    if (errorDiv) {
+      errorDiv.classList.add('d-none');
+    }
+  }
+  
+  emailInput.addEventListener('input', function() {
+    if (validateEmail(this.value)) {
+      clearError(this);
+    }
+  });
+  
+  passwordInput.addEventListener('input', function() {
+    if (this.value.length >= 6) {
+      clearError(this);
+    }
+  });
+  
+  // Form submission
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    
+    // Validate
+    let hasError = false;
+    
+    if (!email) {
+      showError(emailInput, 'Email is required');
+      hasError = true;
+    } else if (!validateEmail(email)) {
+      showError(emailInput, 'Please enter a valid email');
+      hasError = true;
+    }
+    
+    if (!password) {
+      showError(passwordInput, 'Password is required');
+      hasError = true;
+    } else if (password.length < 6) {
+      showError(passwordInput, 'Password must be at least 6 characters');
+      hasError = true;
+    }
+    
+    if (hasError) return;
+    
+    // Show loading
+    loginBtn.disabled = true;
+    loginBtn.dataset.originalHTML = loginBtn.innerHTML;
+    loginBtn.innerHTML = '<span class="spinner spinner-sm me-2"></span> Signing in...';
+    errorEl.classList.add('d-none');
+    
+    try {
+      const response = await fetch('/api/auth/login/', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Store auth data
+        localStorage.setItem('panchayat_token', data.data.access);
+        localStorage.setItem('panchayat_user', JSON.stringify(data.data.user));
+        localStorage.setItem('panchayat_role', data.data.user.role);
+        
+        showToast('Login successful! Welcome back.', 'success');
+        
+        // Fade out and redirect
+        document.querySelector('.login-card').classList.add('animate__fadeOut');
+        
+        setTimeout(() => {
+          switch (data.data.user.role) {
+            case 'admin':
+              window.location.href = '/admin-panel/';
+              break;
+            case 'committee':
+              window.location.href = '/committee/';
+              break;
+            case 'resident':
+              window.location.href = '/resident/';
+              break;
+            default:
+              window.location.href = '/login/';
+          }
+        }, 500);
+      } else {
+        errorEl.textContent = data.message || 'Invalid credentials. Please try again.';
+        errorEl.classList.remove('d-none');
+        errorEl.classList.add('animate__animated', 'animate__shake');
+        setTimeout(() => errorEl.classList.remove('animate__shake'), 500);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      errorEl.textContent = 'Connection error. Please check your internet and try again.';
+      errorEl.classList.remove('d-none');
+    }
+    
+    loginBtn.disabled = false;
+    loginBtn.innerHTML = loginBtn.dataset.originalHTML;
+  });
+  
+  // Auto-focus first input
+  emailInput.focus();
+});
+</script>
+{% endblock %}

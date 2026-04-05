@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Panchayat - Modern Housing Society Management System">
+  <title>{% block title %}Panchayat{% endblock %}</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <!-- Animate.css -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+  
+  <!-- Custom CSS -->
+  <link href="/static/css/panchayat.css" rel="stylesheet">
+  
+  <style>
+    /* Page transition animations */
+    .page-wrapper {
+      animation: fadeInUp 0.4s ease;
+    }
+    
+    /* Sidebar animation */
+    .sidebar {
+      animation: slideInLeft 0.5s ease;
+    }
+    
+    /* Enhanced button hover */
+    .btn {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s ease;
+    }
+    
+    .btn:hover::before {
+      left: 100%;
+    }
+    
+    .btn:active {
+      transform: scale(0.97);
+    }
+    
+    /* Card hover animations */
+    .card, .stat-card, .service-card, .complaint-card {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* Loading skeleton animation */
+    .skeleton {
+      background: linear-gradient(90deg, var(--border) 25%, var(--bg-light) 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: var(--radius-sm);
+    }
+    
+    /* Toast improvements */
+    .toast {
+      backdrop-filter: blur(10px);
+    }
+    
+    /* Focus states */
+    .form-control:focus, .form-select:focus {
+      transition: all 0.2s ease;
+    }
+    
+    /* Nav link active indicator */
+    .nav-link.active::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 60%;
+      background: white;
+      border-radius: 3px;
+    }
+    
+    /* Better modal backdrop */
+    .modal-backdrop {
+      backdrop-filter: blur(4px);
+    }
+  </style>
+  
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+  
+  <!-- Mobile Toggle Button -->
+  <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Toggle navigation">
+    <i class="fas fa-bars"></i>
+  </button>
+  
+  {% block content %}{% endblock %}
+  
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Core JS -->
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/voice-recorder.js"></script>
+  <script src="/static/js/bylaw-chat.js"></script>
+  
+  <script>
+    // Global functions
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('show');
+    }
+    
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', function(e) {
+      const sidebar = document.querySelector('.sidebar');
+      const toggle = document.querySelector('.mobile-toggle');
+      if (window.innerWidth <= 1024 && 
+          sidebar.classList.contains('show') && 
+          !sidebar.contains(e.target) && 
+          !toggle.contains(e.target)) {
+        sidebar.classList.remove('show');
+      }
+    });
+    
+    // Tab switching with animation
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(t => {
+        t.classList.add('d-none');
+        t.classList.remove('active');
+      });
+      document.querySelectorAll('.sidebar .nav-link, .nav-item .nav-link').forEach(l => {
+        l.classList.remove('active');
+      });
+      
+      const target = document.getElementById('tab-' + tabId);
+      if (target) {
+        target.classList.remove('d-none');
+        target.classList.add('active');
+        target.classList.add('animate__animated', 'animate__fadeIn');
+      }
+      
+      const activeLink = document.querySelector('.sidebar [data-tab="' + tabId + '"]');
+      if (activeLink) {
+        activeLink.classList.add('active');
+      }
+    }
+    
+    // Show toast notification
+    function showToast(message, type = 'success', title = '') {
+      const container = document.getElementById('toast-container');
+      const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+      };
+      
+      const toast = document.createElement('div');
+      toast.className = `toast ${type} animate__animated animate__slideInRight`;
+      toast.innerHTML = `
+        <div class="toast-icon">
+          <i class="fas ${icons[type]}"></i>
+        </div>
+        <div class="toast-message">
+          ${title ? `<div class="toast-title">${title}</div>` : ''}
+          <div>${message}</div>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
+      
+      container.appendChild(toast);
+      
+      // Auto remove after 4 seconds
+      setTimeout(() => {
+        toast.classList.remove('animate__slideInRight');
+        toast.classList.add('animate__animated', 'animate__fadeOutRight');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+    
+    // Format date helper
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-IN', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: 'numeric' 
+      });
+    }
+    
+    // Format time helper
+    function formatTime(dateStr) {
+      if (!dateStr) return '-';
+      const date = new Date(dateStr);
+      return date.toLocaleTimeString('en-IN', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+    }
+    
+    // Get greeting
+    function getGreeting() {
+      const hour = new Date().getHours();
+      if (hour < 12) return 'Good morning';
+      if (hour < 17) return 'Good afternoon';
+      return 'Good evening';
+    }
+    
+    // Show loading state on button
+    function setButtonLoading(btn, loading) {
+      if (loading) {
+        btn.disabled = true;
+        btn.dataset.originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner spinner-sm me-2"></span> Loading...';
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = btn.dataset.originalText || btn.innerHTML;
+      }
+    }
+    
+    // Animate element
+    function animateElement(element, animation) {
+      element.classList.add('animate__animated', animation);
+      setTimeout(() => element.classList.remove('animate__animated', animation), 500);
+    }
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  </script>
+  
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

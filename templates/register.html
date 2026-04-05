@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Register - Panchayat{% endblock %}
+
+{% block content %}
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <h1><i class="fas fa-building"></i> Panchayat</h1>
+      <p>Register as Resident</p>
+    </div>
+    
+    <form id="register-form">
+      <div class="mb-3">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-control" id="full_name" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Phone</label>
+        <input type="text" class="form-control" id="phone" required>
+      </div>
+      <div class="row">
+        <div class="col-6 mb-3">
+          <label class="form-label">Flat Number</label>
+          <input type="text" class="form-control" id="flat_no" required>
+        </div>
+        <div class="col-6 mb-3">
+          <label class="form-label">Wing</label>
+          <input type="text" class="form-control" id="wing" required>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-control" id="password" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Confirm Password</label>
+        <input type="password" class="form-control" id="password_confirm" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100" id="register-btn">
+        Register
+      </button>
+    </form>
+    
+    <div class="text-center mt-3">
+      <a href="/login/" class="text-muted">Already have an account? Sign in</a>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('register-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const fullName = document.getElementById('full_name').value.split(' ');
+  const firstName = fullName[0] || '';
+  const lastName = fullName.slice(1).join(' ') || '';
+  
+  const data = {
+    first_name: firstName,
+    last_name: lastName,
+    email: document.getElementById('email').value,
+    phone: document.getElementById('phone').value,
+    flat_no: document.getElementById('flat_no').value,
+    wing: document.getElementById('wing').value,
+    password: document.getElementById('password').value,
+    password_confirm: document.getElementById('password_confirm').value,
+    role: 'resident'
+  };
+  
+  if (data.password !== data.password_confirm) {
+    showToast('Passwords do not match', 'error');
+    return;
+  }
+  
+  const btn = document.getElementById('register-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Registering...';
+  
+  try {
+    const response = await fetch('/api/auth/register/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showToast('Registration successful! Waiting for admin approval.', 'success');
+      setTimeout(() => window.location.href = '/login/', 2000);
+    } else {
+      showToast(result.message || 'Registration failed', 'error');
+    }
+  } catch (error) {
+    showToast('Registration failed. Please try again.', 'error');
+  }
+  
+  btn.disabled = false;
+  btn.innerHTML = 'Register';
+});
+</script>
+{% endblock %}
