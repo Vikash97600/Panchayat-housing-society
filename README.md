@@ -1,3 +1,3 @@
-## 📄 Documentation
+## 🌐 Live Documentation
 
-[View Full Documentation](panchayat_documentation.html)
+[View Documentation](https://your-username.github.io/repo-name/panchayat_documentation.html)
