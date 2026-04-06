@@ -123,6 +123,59 @@
   <script src="/static/js/bylaw-chat.js"></script>
   
   <script>
+    // Auth utilities
+    const auth = {
+      login: async (email, password) => {
+        const res = await api.post('/auth/login/', { email, password });
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem('panchayat_token', data.data.access);
+          localStorage.setItem('panchayat_user', JSON.stringify(data.data.user));
+          localStorage.setItem('panchayat_role', data.data.user.role);
+        }
+        return data;
+      },
+      
+      logout: () => {
+        localStorage.removeItem('panchayat_token');
+        localStorage.removeItem('panchayat_user');
+        localStorage.removeItem('panchayat_role');
+        window.location.href = '/login/';
+      },
+      
+      getUser: () => {
+        try {
+          return JSON.parse(localStorage.getItem('panchayat_user') || 'null');
+        } catch {
+          return null;
+        }
+      },
+      
+      getRole: () => localStorage.getItem('panchayat_role'),
+      
+      isAuthenticated: () => !!localStorage.getItem('panchayat_token')
+    };
+
+    // Auth guard
+    function requireAuth() {
+      if (!auth.isAuthenticated()) {
+        window.location.href = '/login/';
+        return false;
+      }
+      return true;
+    }
+
+    // Role-based redirect
+    function handleRoleRedirect(role) {
+      localStorage.setItem('panchayat_role', role);
+      const routes = {
+        admin: '/admin-panel/',
+        committee: '/committee/',
+        resident: '/resident/'
+      };
+      window.location.href = routes[role] || '/login/';
+    }
+    
     // Global functions
     function toggleSidebar() {
       document.querySelector('.sidebar').classList.toggle('show');
@@ -139,111 +192,6 @@
         sidebar.classList.remove('show');
       }
     });
-    
-    // Tab switching with animation
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-content').forEach(t => {
-        t.classList.add('d-none');
-        t.classList.remove('active');
-      });
-      document.querySelectorAll('.sidebar .nav-link, .nav-item .nav-link').forEach(l => {
-        l.classList.remove('active');
-      });
-      
-      const target = document.getElementById('tab-' + tabId);
-      if (target) {
-        target.classList.remove('d-none');
-        target.classList.add('active');
-        target.classList.add('animate__animated', 'animate__fadeIn');
-      }
-      
-      const activeLink = document.querySelector('.sidebar [data-tab="' + tabId + '"]');
-      if (activeLink) {
-        activeLink.classList.add('active');
-      }
-    }
-    
-    // Show toast notification
-    function showToast(message, type = 'success', title = '') {
-      const container = document.getElementById('toast-container');
-      const icons = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        warning: 'fa-exclamation-triangle',
-        info: 'fa-info-circle'
-      };
-      
-      const toast = document.createElement('div');
-      toast.className = `toast ${type} animate__animated animate__slideInRight`;
-      toast.innerHTML = `
-        <div class="toast-icon">
-          <i class="fas ${icons[type]}"></i>
-        </div>
-        <div class="toast-message">
-          ${title ? `<div class="toast-title">${title}</div>` : ''}
-          <div>${message}</div>
-        </div>
-        <button class="toast-close" onclick="this.parentElement.remove()">
-          <i class="fas fa-times"></i>
-        </button>
-      `;
-      
-      container.appendChild(toast);
-      
-      // Auto remove after 4 seconds
-      setTimeout(() => {
-        toast.classList.remove('animate__slideInRight');
-        toast.classList.add('animate__animated', 'animate__fadeOutRight');
-        setTimeout(() => toast.remove(), 300);
-      }, 4000);
-    }
-    
-    // Format date helper
-    function formatDate(dateStr) {
-      if (!dateStr) return '-';
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-IN', { 
-        day: '2-digit', 
-        month: 'short', 
-        year: 'numeric' 
-      });
-    }
-    
-    // Format time helper
-    function formatTime(dateStr) {
-      if (!dateStr) return '-';
-      const date = new Date(dateStr);
-      return date.toLocaleTimeString('en-IN', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-    }
-    
-    // Get greeting
-    function getGreeting() {
-      const hour = new Date().getHours();
-      if (hour < 12) return 'Good morning';
-      if (hour < 17) return 'Good afternoon';
-      return 'Good evening';
-    }
-    
-    // Show loading state on button
-    function setButtonLoading(btn, loading) {
-      if (loading) {
-        btn.disabled = true;
-        btn.dataset.originalText = btn.innerHTML;
-        btn.innerHTML = '<span class="spinner spinner-sm me-2"></span> Loading...';
-      } else {
-        btn.disabled = false;
-        btn.innerHTML = btn.dataset.originalText || btn.innerHTML;
-      }
-    }
-    
-    // Animate element
-    function animateElement(element, animation) {
-      element.classList.add('animate__animated', animation);
-      setTimeout(() => element.classList.remove('animate__animated', animation), 500);
-    }
     
     // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));

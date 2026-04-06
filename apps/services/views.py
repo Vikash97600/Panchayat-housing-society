@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from apps.accounts.views import log_audit
 from .models import Service, ServiceSlot, Booking
 from .serializers import (
-    ServiceSerializer, ServiceWithSlotsSerializer, ServiceSlotSerializer,
+    ServiceSerializer, ServiceCreateSerializer, ServiceWithSlotsSerializer, ServiceSlotSerializer,
     BookingSerializer, BookingCreateSerializer, BookingListSerializer
 )
 
@@ -27,10 +27,18 @@ class ServiceListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Service.objects.filter(
-            society=self.request.user.society,
-            is_active=True
-        )
+        return Service.objects.filter(society=self.request.user.society)
+
+
+class ServiceCreateView(generics.CreateAPIView):
+    serializer_class = ServiceCreateSerializer
+    permission_classes = [IsAdminOrCommittee]
+    
+    def perform_create(self, serializer):
+        service = serializer.save(society=self.request.user.society)
+        
+        log_audit(self.request.user, 'service_created', 'Service', service.id,
+                  {'name': service.name}, self.request)
 
 
 class ServiceDetailView(generics.RetrieveAPIView):
@@ -42,6 +50,29 @@ class ServiceDetailView(generics.RetrieveAPIView):
             society=self.request.user.society,
             is_active=True
         )
+
+
+class ServiceUpdateView(generics.UpdateAPIView):
+    serializer_class = ServiceSerializer
+    permission_classes = [IsAdminOrCommittee]
+    
+    def get_queryset(self):
+        return Service.objects.filter(society=self.request.user.society)
+    
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        log_audit(request.user, 'service_updated', 'Service', instance.id,
+                  {'name': instance.name}, request)
+        
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'message': 'Service updated successfully'
+        })
 
 
 class ServiceSlotsView(generics.ListAPIView):

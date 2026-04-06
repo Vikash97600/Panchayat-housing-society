@@ -194,6 +194,13 @@ async function loadDashboard() {
   log('DASHBOARD', 'Loading dashboard...');
   const user = auth.getUser();
   
+  if (!user) {
+    log('DASHBOARD', 'No user found, skipping dashboard load');
+    return;
+  }
+  
+  const userId = user.id; // Store user ID for comparison
+  
   try {
     // Load complaints
     const complaintsRes = await api.get('/complaints/');
@@ -201,7 +208,8 @@ async function loadDashboard() {
     const complaints = complaintsData.results || [];
     log('DASHBOARD', 'Complaints loaded:', complaints.length);
     
-    const myComplaints = complaints.filter(c => c.submitted_by === user.id);
+    // Filter by submitted_by - handle both string and number comparison
+    const myComplaints = complaints.filter(c => String(c.submitted_by) === String(userId));
     const openCount = myComplaints.filter(c => c.status === 'open').length;
     
     const countEl = document.getElementById('my-complaints-count');
@@ -209,21 +217,36 @@ async function loadDashboard() {
       countEl.textContent = openCount;
       log('DASHBOARD', 'Open complaints count set:', openCount);
     }
-    
+  } catch (e) {
+    console.error('DASHBOARD', 'Error loading complaints:', e);
+  }
+  
+  try {
     // Load bookings
     const bookingsRes = await api.get('/services/bookings/');
     const bookingsData = await bookingsRes.json();
     const bookings = bookingsData.results || [];
     log('DASHBOARD', 'Bookings loaded:', bookings.length);
     
-    const myBookings = bookings.filter(b => b.resident === user.id && b.status === 'confirmed');
+    // Filter by resident - handle both string and number comparison
+    const myBookings = bookings.filter(b => String(b.resident) === String(userId) && b.status === 'confirmed');
     const nextBookingEl = document.getElementById('next-booking');
-    if (nextBookingEl && myBookings.length > 0) {
-      const next = myBookings[0];
-      nextBookingEl.textContent = (next.service_name || 'Service') + ' (' + formatDate(next.slot_date) + ')';
-      log('DASHBOARD', 'Next booking set:', next.service_name);
+    if (nextBookingEl) {
+      if (myBookings.length > 0) {
+        const next = myBookings[0];
+        nextBookingEl.textContent = (next.service_name || 'Service') + ' (' + formatDate(next.slot_date) + ')';
+        log('DASHBOARD', 'Next booking set:', next.service_name);
+      } else {
+        nextBookingEl.textContent = 'None';
+      }
     }
-    
+  } catch (e) {
+    console.error('DASHBOARD', 'Error loading bookings:', e);
+    const nextBookingEl = document.getElementById('next-booking');
+    if (nextBookingEl) nextBookingEl.textContent = '-';
+  }
+  
+  try {
     // Load notices
     const noticesRes = await api.get('/notices/');
     const noticesData = await noticesRes.json();
@@ -231,12 +254,22 @@ async function loadDashboard() {
     log('DASHBOARD', 'Notices loaded:', notices.length);
     
     const latestNoticeEl = document.getElementById('latest-notice');
-    if (latestNoticeEl && notices.length > 0) {
-      const title = notices[0].title || '';
-      latestNoticeEl.textContent = title.length > 20 ? title.substring(0, 20) + '...' : title;
-      log('DASHBOARD', 'Latest notice set:', notices[0].title);
+    if (latestNoticeEl) {
+      if (notices.length > 0) {
+        const title = notices[0].title || '';
+        latestNoticeEl.textContent = title.length > 15 ? title.substring(0, 15) + '...' : title;
+        log('DASHBOARD', 'Latest notice set:', notices[0].title);
+      } else {
+        latestNoticeEl.textContent = 'None';
+      }
     }
-    
+  } catch (e) {
+    console.error('DASHBOARD', 'Error loading notices:', e);
+    const latestNoticeEl = document.getElementById('latest-notice');
+    if (latestNoticeEl) latestNoticeEl.textContent = '-';
+  }
+  
+  try {
     // Check dues
     const duesRes = await api.get('/finance/dues/me/');
     const duesData = await duesRes.json();
@@ -476,8 +509,10 @@ async function loadMyComplaints(filter = 'all') {
   } catch (e) {
     console.error('COMPLAINTS', 'Error loading complaints:', e);
   }
-  
-  const myComplaints = complaints.filter(c => c.submitted_by === user.id);
+
+  // Handle both string and number comparison for user ID
+  const userId = user ? user.id : null;
+  const myComplaints = complaints.filter(c => c.submitted_by && String(c.submitted_by) === String(userId));
   log('COMPLAINTS', 'My complaints:', myComplaints.length);
   
   const container = document.getElementById('my-complaints-list');

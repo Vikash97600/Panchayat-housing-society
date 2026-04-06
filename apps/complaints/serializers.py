@@ -70,7 +70,7 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
 class ComplaintUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Complaint
-        fields = ['status', 'assigned_to', 'priority']
+        fields = ['title', 'description', 'category', 'priority', 'status', 'assigned_to']
 
     def update(self, instance, validated_data):
         old_status = instance.status

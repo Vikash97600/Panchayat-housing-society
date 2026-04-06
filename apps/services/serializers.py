@@ -8,6 +8,15 @@ class ServiceSlotSerializer(serializers.ModelSerializer):
         fields = ['id', 'service', 'slot_date', 'start_time', 'end_time', 'is_available']
 
 
+class ServiceCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = ['name', 'description', 'vendor_name', 'vendor_phone', 'price_per_slot', 'is_active']
+        extra_kwargs = {
+            'is_active': {'default': True}
+        }
+
+
 class ServiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service

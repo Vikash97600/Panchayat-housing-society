@@ -351,7 +351,7 @@ async function loadServices() {
         <td>₹${s.price_per_slot}</td>
         <td><span class="badge badge-${s.is_active ? 'success' : 'secondary'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
         <td>
-          <button class="btn btn-sm btn-outline-primary">
+          <button class="btn btn-sm btn-outline-primary" onclick="editService(${s.id})">
             <i class="fas fa-edit"></i>
           </button>
         </td>
@@ -364,35 +364,111 @@ async function loadServices() {
 }
 
 async function saveService() {
+  const serviceId = document.getElementById('service-id')?.value;
   const data = {
     name: document.getElementById('service-name').value,
     description: document.getElementById('service-desc').value,
     vendor_name: document.getElementById('service-vendor').value,
     vendor_phone: document.getElementById('service-phone').value,
-    price_per_slot: document.getElementById('service-price').value
+    price_per_slot: document.getElementById('service-price').value,
+    is_active: document.getElementById('service-active').checked
   };
   
   const btn = document.querySelector('#serviceModal .btn-primary');
   setButtonLoading(btn, true);
   
   try {
-    const res = await api.post('/services/', data);
-    const result = await res.json();
+    let res, result;
+    
+    if (serviceId) {
+      // Update existing service
+      res = await api.put(`/services/${serviceId}/update/`, data);
+      result = await res.json();
+      
+      if (result.success) {
+        showToast('Service updated successfully', 'success');
+      } else {
+        showToast(result.message || 'Failed to update service', 'error');
+      }
+    } else {
+      // Create new service
+      res = await api.post('/services/create/', data);
+      result = await res.json();
+      
+      if (result.success) {
+        showToast('Service created successfully', 'success');
+      } else {
+        showToast(result.message || 'Failed to create service', 'error');
+      }
+    }
     
     if (result.success) {
-      showToast('Service created successfully', 'success');
       bootstrap.Modal.getInstance(document.getElementById('serviceModal')).hide();
       document.getElementById('service-form').reset();
+      document.getElementById('service-id')?.remove();
       loadServices();
-    } else {
-      showToast(result.message || 'Failed to create service', 'error');
     }
   } catch (e) {
-    showToast('Error creating service', 'error');
+    showToast('Error saving service', 'error');
   }
   
   setButtonLoading(btn, false);
 }
+
+async function editService(serviceId) {
+  console.log('[ADMIN] editService called with ID:', serviceId);
+  try {
+    const res = await api.get(`/services/${serviceId}/`);
+    const data = await res.json();
+    console.log('[ADMIN] Service data received:', data);
+    
+    if (data && data.id) {
+      // Set service ID in hidden field
+      let idField = document.getElementById('service-id');
+      if (!idField) {
+        idField = document.createElement('input');
+        idField.type = 'hidden';
+        idField.id = 'service-id';
+        document.getElementById('service-form').appendChild(idField);
+      }
+      idField.value = serviceId;
+      
+      // Populate form fields
+      document.getElementById('service-name').value = data.name || '';
+      document.getElementById('service-desc').value = data.description || '';
+      document.getElementById('service-vendor').value = data.vendor_name || '';
+      document.getElementById('service-phone').value = data.vendor_phone || '';
+      document.getElementById('service-price').value = data.price_per_slot || '0';
+      document.getElementById('service-active').checked = data.is_active !== false;
+      
+      // Update modal title
+      document.querySelector('#serviceModal .modal-title').innerHTML = '<i class="fas fa-edit me-2"></i>Edit Service';
+      document.querySelector('#serviceModal .btn-primary').innerHTML = '<i class="fas fa-save me-2"></i>Update Service';
+      
+      // Show modal
+      const modalElement = document.getElementById('serviceModal');
+      const modal = new bootstrap.Modal(modalElement);
+      modal.show();
+      console.log('[ADMIN] Modal shown successfully');
+    } else {
+      console.error('[ADMIN] Invalid service data:', data);
+      showToast('Failed to load service details', 'error');
+    }
+  } catch (e) {
+    console.error('[ADMIN] Error loading service:', e);
+    showToast('Failed to load service details', 'error');
+  }
+}
+
+// Reset service form when modal closes
+document.getElementById('serviceModal')?.addEventListener('hidden.bs.modal', function() {
+  const idField = document.getElementById('service-id');
+  if (idField) idField.remove();
+  document.getElementById('service-form').reset();
+  document.querySelector('#serviceModal .modal-title').innerHTML = '<i class="fas fa-tools me-2"></i>Add New Service';
+  document.querySelector('#serviceModal .btn-primary').innerHTML = '<i class="fas fa-save me-2"></i>Save Service';
+  document.getElementById('service-active').checked = true;
+});
 
 // Audit Log
 async function loadAuditLog() {
@@ -474,5 +550,6 @@ window.loadBylaws = loadBylaws;
 window.uploadBylaw = uploadBylaw;
 window.loadServices = loadServices;
 window.saveService = saveService;
+window.editService = editService;
 window.saveSociety = saveSociety;
 window.approveUser = approveUser;

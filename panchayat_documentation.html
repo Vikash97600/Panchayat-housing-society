@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panchayat - Housing Society Management System Documentation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-primary: #534AB7;
+            --brand-light: #7C72E8;
+            --brand-ultra-light: #EEEDFE;
+            --brand-dark: #3D3485;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --info: #3B82F6;
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-300: #D1D5DB;
+            --gray-400: #9CA3AF;
+            --gray-500: #6B7280;
+            --gray-600: #4B5563;
+            --gray-700: #374151;
+            --gray-800: #1F2937;
+            --gray-900: #111827;
+        }
+        
+        * {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--gray-700);
+            background: var(--gray-50);
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 280px;
+            background: linear-gradient(180deg, var(--brand-primary) 0%, var(--brand-dark) 100%);
+            overflow-y: auto;
+            z-index: 1000;
+            padding: 0;
+        }
+        
+        .sidebar-brand {
+            padding: 24px 20px;
+            background: rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .sidebar-brand h1 {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .sidebar-brand p {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.75rem;
+            margin: 4px 0 0 0;
+        }
+        
+        .sidebar-nav {
+            padding: 16px 0;
+        }
+        
+        .sidebar-section-title {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 16px 20px 8px;
+            font-weight: 600;
+        }
+        
+        .sidebar a {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            color: rgba(255,255,255,0.75);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+        
+        .sidebar a:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        
+        .sidebar a.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border-left-color: white;
+        }
+        
+        .sidebar a i {
+            width: 20px;
+            margin-right: 12px;
+            font-size: 0.9rem;
+        }
+        
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            padding: 0;
+        }
+        
+        .content-wrapper {
+            padding: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Section Styling */
+        section {
+            margin-bottom: 48px;
+            scroll-margin-top: 20px;
+        }
+        
+        section h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--brand-ultra-light);
+        }
+        
+        section h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin: 32px 0 16px;
+        }
+        
+        section h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin: 24px 0 12px;
+        }
+        
+        section h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin: 20px 0 10px;
+        }
+        
+        .section-header {
+            background: var(--brand-ultra-light);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+        
+        .section-header h2 {
+            margin: 0;
+            color: var(--brand-primary);
+        }
+        
+        /* Cards */
+        .card {
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            background: white;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .card-header {
+            background: var(--gray-50);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-200);
+            border-radius: 12px 12px 0 0;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+        
+        .card-body {
+            padding: 20px;
+        }
+        
+        /* Tables */
+        .table {
+            margin: 0;
+            font-size: 0.875rem;
+        }
+        
+        .table thead th {
+            background: var(--gray-50);
+            padding: 14px 16px;
+            font-weight: 600;
+            color: var(--gray-600);
+            border-bottom: 2px solid var(--gray-200);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+        
+        .table tbody td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--gray-100);
+            vertical-align: middle;
+        }
+        
+        .table tbody tr:hover {
+            background: var(--gray-50);
+        }
+        
+        .table-striped tbody tr:nth-child(odd) {
+            background: var(--gray-50);
+        }
+        
+        .table-striped tbody tr:nth-child(odd):hover {
+            background: var(--gray-100);
+        }
+        
+        /* Badges */
+        .badge {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border-radius: 20px;
+        }
+        
+        .badge-yes {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+        
+        .badge-no {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+        
+        .badge-own {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+        
+        .badge-admin {
+            background: #EDE9FE;
+            color: #5B21B6;
+        }
+        
+        .badge-committee {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+        
+        .badge-resident {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+        
+        /* Code Blocks */
+        pre {
+            background: var(--gray-800);
+            color: #E5E7EB;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            margin: 16px 0;
+        }
+        
+        code {
+            font-family: 'Fira Code', 'Monaco', monospace;
+            background: var(--gray-100);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.875em;
+            color: var(--brand-primary);
+        }
+        
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+        }
+        
+        .code-wrap {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        /* Credentials Box */
+        .credentials-box {
+            background: linear-gradient(135deg, var(--brand-ultra-light), white);
+            border: 2px solid var(--brand-primary);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 16px 0;
+        }
+        
+        .credentials-box h4 {
+            color: var(--brand-primary);
+            margin-bottom: 16px;
+        }
+        
+        .credential-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        
+        .credential-item:last-child {
+            border-bottom: none;
+        }
+        
+        .credential-item .role {
+            width: 100px;
+            font-weight: 600;
+            color: var(--gray-600);
+        }
+        
+        .credential-item .email {
+            flex: 1;
+            font-family: monospace;
+            color: var(--gray-700);
+        }
+        
+        .credential-item .password {
+            font-family: monospace;
+            color: var(--brand-primary);
+            font-weight: 500;
+        }
+        
+        /* Callout Boxes */
+        .callout {
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin: 16px 0;
+            border-left: 4px solid;
+        }
+        
+        .callout-info {
+            background: #EFF6FF;
+            border-color: var(--info);
+        }
+        
+        .callout-warning {
+            background: #FFFBEB;
+            border-color: var(--warning);
+        }
+        
+        .callout-success {
+            background: #ECFDF5;
+            border-color: var(--success);
+        }
+        
+        .callout-danger {
+            background: #FEF2F2;
+            border-color: var(--danger);
+        }
+        
+        .callout-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .callout-info .callout-title { color: var(--info); }
+        .callout-warning .callout-title { color: var(--warning); }
+        .callout-success .callout-title { color: var(--success); }
+        .callout-danger .callout-title { color: var(--danger); }
+        
+        /* API Method Badges */
+        .method-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: monospace;
+            margin-right: 8px;
+        }
+        
+        .method-get {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+        
+        .method-post {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+        
+        .method-put {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+        
+        .method-delete {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+        
+        /* Steps */
+        .step-list {
+            counter-reset: step-counter;
+            list-style: none;
+            padding: 0;
+        }
+        
+        .step-list li {
+            counter-increment: step-counter;
+            display: flex;
+            align-items: flex-start;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--gray-100);
+        }
+        
+        .step-list li::before {
+            content: counter(step-counter);
+            flex-shrink: 0;
+            width: 28px;
+            height: 28px;
+            background: var(--brand-primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-right: 16px;
+        }
+        
+        /* Tech Stack Table */
+        .tech-table td {
+            padding: 12px 16px;
+        }
+        
+        .tech-table .tech-name {
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+        
+        .tech-table .tech-desc {
+            color: var(--gray-500);
+            font-size: 0.875rem;
+        }
+        
+        /* Architecture Diagram */
+        .arch-diagram {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 32px;
+            margin: 24px 0;
+        }
+        
+        .arch-box {
+            display: inline-block;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            margin: 4px;
+        }
+        
+        .arch-front {
+            background: var(--brand-ultra-light);
+            color: var(--brand-primary);
+            border: 2px solid var(--brand-primary);
+        }
+        
+        .arch-back {
+            background: #ECFDF5;
+            color: #065F46;
+            border: 2px solid #10B981;
+        }
+        
+        .arch-api {
+            background: #FEF3C7;
+            color: #92400E;
+            border: 2px solid #F59E0B;
+        }
+        
+        .arch-db {
+            background: #FEE2E2;
+            color: #991B1B;
+            border: 2px solid #EF4444;
+        }
+        
+        .arch-ai {
+            background: #EDE9FE;
+            color: #5B21B6;
+            border: 2px solid #8B5CF6;
+        }
+        
+        .arch-arrow {
+            color: var(--gray-400);
+            font-size: 1.5rem;
+            margin: 0 8px;
+        }
+        
+        /* Back to Top */
+        .back-to-top {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 48px;
+            height: 48px;
+            background: var(--brand-primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            box-shadow: 0 4px 12px rgba(83, 74, 183, 0.3);
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 1000;
+            text-decoration: none;
+        }
+        
+        .back-to-top:hover {
+            background: var(--brand-dark);
+            transform: translateY(-2px);
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--gray-800);
+            color: var(--gray-400);
+            padding: 24px;
+            text-align: center;
+            margin-top: 48px;
+        }
+        
+        footer a {
+            color: var(--brand-light);
+        }
+        
+        /* Print Styles */
+        @media print {
+            .sidebar {
+                display: none;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .content-wrapper {
+                padding: 20px;
+                max-width: 100%;
+            }
+            
+            .back-to-top {
+                display: none;
+            }
+            
+            section {
+                page-break-inside: avoid;
+            }
+            
+            pre {
+                white-space: pre-wrap;
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 991px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .content-wrapper {
+                padding: 20px;
+            }
+            
+            .mobile-menu-toggle {
+                display: flex !important;
+            }
+        }
+        
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1001;
+            width: 44px;
+            height: 44px;
+            background: var(--brand-primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('show')">
+        <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Sidebar -->
+    <nav class="sidebar" role="navigation">
+        <div class="sidebar-brand">
+            <h1><i class="fas fa-building me-2"></i>Panchayat</h1>
+            <p>Housing Society Management System</p>
+        </div>
+        
+        <div class="sidebar-nav">
+            <div class="sidebar-section-title">Getting Started</div>
+            <a href="#overview"><i class="fas fa-home"></i> Overview</a>
+            <a href="#installation"><i class="fas fa-download"></i> Installation</a>
+            <a href="#quick-start"><i class="fas fa-rocket"></i> Quick Start</a>
+            
+            <div class="sidebar-section-title">Features</div>
+            <a href="#authentication"><i class="fas fa-lock"></i> Authentication</a>
+            <a href="#complaints"><i class="fas fa-ticket-alt"></i> Complaints</a>
+            <a href="#bylaws"><i class="fas fa-gavel"></i> Bylaw Bot</a>
+            <a href="#services"><i class="fas fa-tools"></i> Services</a>
+            <a href="#finance"><i class="fas fa-money-bill-wave"></i> Finance</a>
+            <a href="#notices"><i class="fas fa-bullhorn"></i> Notices</a>
+            <a href="#admin"><i class="fas fa-user-shield"></i> Admin Panel</a>
+            
+            <div class="sidebar-section-title">Reference</div>
+            <a href="#api"><i class="fas fa-code"></i> API Reference</a>
+            <a href="#database"><i class="fas fa-database"></i> Database</a>
+            <a href="#roles"><i class="fas fa-users-cog"></i> Roles</a>
+            <a href="#troubleshooting"><i class="fas fa-wrench"></i> Troubleshooting</a>
+            <a href="#files"><i class="fas fa-folder-tree"></i> File Structure</a>
+        </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="content-wrapper">
+            
+            <!-- Header -->
+            <div class="text-center mb-5 pb-5" style="border-bottom: 1px solid var(--gray-200);">
+                <h1 style="font-size: 2.5rem; margin-bottom: 16px;">
+                    <span style="color: var(--brand-primary);">Panchayat</span> Documentation
+                </h1>
+                <p class="lead text-muted">Complete documentation for the Housing Society Management System</p>
+                <div class="mt-4">
+                    <span class="badge bg-secondary me-2">v1.0</span>
+                    <span class="badge bg-secondary me-2">Django 4.2</span>
+                    <span class="badge bg-secondary">Bootstrap 5</span>
+                </div>
+            </div>
+            
+            <!-- SECTION 1: PROJECT OVERVIEW -->
+            <section id="overview">
+                <div class="section-header">
+                    <h2><i class="fas fa-home me-2"></i>1. Project Overview</h2>
+                </div>
+                
+                <h3>What is Panchayat?</h3>
+                <p>Panchayat is a comprehensive web-based Housing Society Management System built specifically for Indian residential societies. It replaces outdated WhatsApp groups, paper registers, and manual processes with a modern AI-powered platform that handles complaint management, bylaw lookups, service bookings, and transparent maintenance accounting.</p>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title"><i class="fas fa-info-circle"></i> Target Audience</div>
+                    <div>Societies with 50 to 500+ flats, managed by housing society committees in India.</div>
+                </div>
+                
+                <h3>The Problem It Solves</h3>
+                <ul>
+                    <li>420 unread WhatsApp messages nobody responds to</li>
+                    <li>10-minute voice notes about leaky taps going untracked</li>
+                    <li>Residents not knowing where their maintenance money goes</li>
+                    <li>Parking disputes at 11 PM with no resolution system</li>
+                    <li>Dusty rule books nobody reads or knows how to find</li>
+                    <li>Domestic staff entering without verification</li>
+                    <li>AGM chaos because accounts are not transparent</li>
+                </ul>
+                
+                <h3>The Solution</h3>
+                <ul>
+                    <li>Centralized complaint ticketing with voice support</li>
+                    <li>AI that reads complaints and gives a 3-point summary</li>
+                    <li>Bylaw bot that answers "Can I renovate on Sunday?" in seconds</li>
+                    <li>Transparent maintenance ledger with plain-language AI explanation</li>
+                    <li>Service booking for plumber, electrician, laundry, carpenter</li>
+                    <li>Role-based access for Admin, Committee, and Residents</li>
+                </ul>
+                
+                <h3>Tech Stack</h3>
+                <table class="table table-bordered tech-table">
+                    <thead>
+                        <tr>
+                            <th>Layer</th>
+                            <th>Technology</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="tech-name">Frontend</td>
+                            <td>HTML5, CSS3, JavaScript, Bootstrap 5</td>
+                            <td class="tech-desc">Responsive UI with purple brand theme</td>
+                        </tr>
+                        <tr>
+                            <td class="tech-name">Backend</td>
+                            <td>Python 3.11, Django 4.2</td>
+                            <td class="tech-desc">Robust web framework</td>
+                        </tr>
+                        <tr>
+                            <td class="tech-name">REST API</td>
+                            <td>Django REST Framework + JWT Auth</td>
+                            <td class="tech-desc">Token-based API authentication</td>
+                        </tr>
+                        <tr>
+                            <td class="tech-name">Database</td>
+                            <td>MySQL 8</td>
+                            <td class="tech-desc">Relational data storage</td>
+                        </tr>
+                        <tr>
+                            <td class="tech-name">AI - Text</td>
+                            <td>Google Gemini 1.5 Flash</td>
+                            <td class="tech-desc">Free tier for bylaw Q&A and summaries</td>
+                        </tr>
+                        <tr>
+                            <td class="tech-name">AI - Voice</td>
+                            <td>Groq Whisper Large V3</td>
+                            <td class="tech-desc">Free tier for transcription</td>
+                        </tr>
+                        <tr>
+                            <td class="tech-name">File Storage</td>
+                            <td>Django FileField</td>
+                            <td class="tech-desc">Local storage (S3-ready)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>System Architecture</h3>
+                <div class="arch-diagram text-center">
+                    <div class="mb-3">
+                        <span class="arch-box arch-front">Browser</span>
+                        <span class="arch-arrow"><i class="fas fa-arrow-right"></i></span>
+                        <span class="arch-box arch-back">Django Templates</span>
+                    </div>
+                    <div class="mb-3">
+                        <span class="arch-arrow"><i class="fas fa-arrow-down"></i></span>
+                    </div>
+                    <div class="mb-3">
+                        <span class="arch-box arch-back">REST API</span>
+                        <span class="arch-arrow"><i class="fas fa-arrow-right"></i></span>
+                        <span class="arch-box arch-db">MySQL</span>
+                    </div>
+                    <div class="mb-3">
+                        <span class="arch-box arch-db">Gemini API</span>
+                        <span class="arch-box arch-db">Groq Whisper API</span>
+                        <span class="arch-box arch-db">Media Storage</span>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- SECTION 2: USER ROLES & PERMISSIONS -->
+            <section id="roles">
+                <div class="section-header">
+                    <h2><i class="fas fa-users-cog me-2"></i>2. User Roles & Permissions</h2>
+                </div>
+                
+                <h3>Three User Roles</h3>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <span class="badge badge-admin me-2">Admin</span> Super User (Society Admin)
+                    </div>
+                    <div class="card-body">
+                        <p>Full system access across all societies. Can manage societies, users, roles, bylaws, services, and view audit logs.</p>
+                        <p class="mb-0"><strong>Access URL:</strong> <code>/admin-panel/</code></p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <span class="badge badge-committee me-2">Committee</span> Committee Member (Secretary/Treasurer)
+                    </div>
+                    <div class="card-body">
+                        <p>Society-level access. Manage complaints, post notices, track dues, and view service bookings.</p>
+                        <p class="mb-0"><strong>Access URL:</strong> <code>/committee/</code></p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <span class="badge badge-resident me-2">Resident</span> Flat Owner/Tenant
+                    </div>
+                    <div class="card-body">
+                        <p>Personal access only. Submit complaints, book services, view dues, and read notices.</p>
+                        <p class="mb-0"><strong>Access URL:</strong> <code>/resident/</code></p>
+                    </div>
+                </div>
+                
+                <h3>Permission Matrix</h3>
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Admin</th>
+                            <th>Committee</th>
+                            <th>Resident</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Login to system</td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-yes">YES</span></td></tr>
+                        <tr><td>View all complaints</td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-own">OWN ONLY</span></td></tr>
+                        <tr><td>Submit complaint</td><td><span class="badge badge-no">NO</span></td><td><span class="badge badge-no">NO</span></td><td><span class="badge badge-yes">YES</span></td></tr>
+                        <tr><td>Edit complaint</td><td><span class="badge badge-no">NO</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-own">OWN ONLY</span></td></tr>
+                        <tr><td>Delete complaint</td><td><span class="badge badge-no">NO</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-own">OWN ONLY (Open)</span></td></tr>
+                        <tr><td>Resolve complaint</td><td><span class="badge badge-no">NO</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-no">NO</span></td></tr>
+                        <tr><td>Upload bylaw PDF</td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-no">NO</span></td><td><span class="badge badge-no">NO</span></td></tr>
+                        <tr><td>Ask bylaw bot</td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-yes">YES</span></td></tr>
+                        <tr><td>Book services</td><td><span class="badge badge-no">NO</span></td><td><span class="badge badge-no">NO</span></td><td><span class="badge badge-yes">YES</span></td></tr>
+                        <tr><td>Manage services</td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-no">NO</span></td><td><span class="badge badge-no">NO</span></td></tr>
+                        <tr><td>View service bookings</td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-own">OWN ONLY</span></td></tr>
+                        <tr><td>Enter maintenance</td><td><span class="badge badge-no">NO</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-no">NO</span></td></tr>
+                        <tr><td>View dues</td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-own">OWN ONLY</span></td></tr>
+                        <tr><td>Mark dues paid</td><td><span class="badge badge-no">NO</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-no">NO</span></td></tr>
+                        <tr><td>Post notices</td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-no">NO</span></td></tr>
+                        <tr><td>View notices</td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-yes">YES</span></td></tr>
+                        <tr><td>View AI summary</td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-no">NO</span></td></tr>
+                        <tr><td>Approve users</td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-no">NO</span></td></tr>
+                        <tr><td>View audit logs</td><td><span class="badge badge-yes">YES</span></td><td><span class="badge badge-no">NO</span></td><td><span class="badge badge-no">NO</span></td></tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <!-- SECTION 3: FEATURES -->
+            <section id="authentication">
+                <div class="section-header">
+                    <h2><i class="fas fa-lock me-2"></i>3. Authentication System</h2>
+                </div>
+                
+                <h3>Login Page</h3>
+                <p>Access the login page at:</p>
+                <pre>http://127.0.0.1:8000/login/</pre>
+                
+                <p>Enter your email and password. On success:</p>
+                <ul>
+                    <li>JWT token stored in localStorage</li>
+                    <li>Role stored in localStorage</li>
+                    <li>Redirect based on role:
+                        <ul>
+                            <li>Admin → <code>/admin-panel/</code></li>
+                            <li>Committee → <code>/committee/</code></li>
+                            <li>Resident → <code>/resident/</code></li>
+                        </ul>
+                    </li>
+                </ul>
+                
+                <h3>Registration</h3>
+                <p>New residents can register at:</p>
+                <pre>http://127.0.0.1:8000/register/</pre>
+                
+                <p>After submission, the account is <strong>pending approval</strong>. An admin must approve the user before they can login.</p>
+                
+                <div class="callout callout-warning">
+                    <div class="callout-title"><i class="fas fa-exclamation-triangle"></i> Note</div>
+                    <div>New registrations require admin approval before the user can login. Until approved, login attempts return "Account not approved yet".</div>
+                </div>
+            </section>
+            
+            <section id="complaints">
+                <div class="section-header">
+                    <h2><i class="fas fa-ticket-alt me-2"></i>4. Complaint Management</h2>
+                </div>
+                
+                <h3>4.1 Submit Text Complaint (Resident)</h3>
+                <p>Residents can submit text complaints with the following fields:</p>
+                <ul>
+                    <li><strong>Title</strong> - Brief description (required)</li>
+                    <li><strong>Description</strong> - Full details (optional)</li>
+                    <li><strong>Category</strong> - Plumbing, Electrical, Lift, Parking, Noise, Cleanliness, Security, Other</li>
+                    <li><strong>Priority</strong> - Low, Medium, Urgent</li>
+                </ul>
+                <p>Auto-assigns to the resident's society with status <code>Open</code>.</p>
+                
+                <h3>4.2 Submit Voice Complaint (Resident)</h3>
+                <p>Voice complaints enable residents to speak in Hindi, Marathi, English, or Tamil:</p>
+                <ol class="step-list">
+                    <li>Click the microphone button</li>
+                    <li>Allow microphone permission when browser asks</li>
+                    <li>Speak your complaint</li>
+                    <li>Click Stop when done</li>
+                    <li>Wait for AI transcription (3-5 seconds)</li>
+                    <li>Review and edit the transcript if needed</li>
+                    <li>Submit the complaint</li>
+                </ol>
+                <p>Supported formats: WebM, WAV, MP3, MP4, OGG, FLAC. Max size: 10MB.</p>
+                
+                <h3>4.3 View My Complaints (Resident)</h3>
+                <p>Shows all complaints submitted by the resident with:</p>
+                <ul>
+                    <li>Title, status badge, priority badge, category, date</li>
+                    <li>Click to expand: full description, timeline, assigned to, notes</li>
+                    <li>Status timeline: Open → In Progress → Resolved → Closed</li>
+                </ul>
+                
+                <h3>4.4 Edit Complaint</h3>
+                <p>Edit button visibility rules:</p>
+                <ul>
+                    <li><span class="badge badge-yes">YES</span> Edit = Open or In Progress</li>
+                    <li><span class="badge badge-no">NO</span> Edit = Resolved or Closed</li>
+                </ul>
+                
+                <h3>4.5 Delete Complaint</h3>
+                <p>Delete button visibility rules:</p>
+                <ul>
+                    <li><span class="badge badge-yes">YES</span> Delete = Open only</li>
+                    <li><span class="badge badge-no">NO</span> Delete = In Progress, Resolved, Closed</li>
+                </ul>
+                
+                <h3>4.6 Manage All Complaints (Committee)</h3>
+                <p>Committee members can:</p>
+                <ul>
+                    <li>View all complaints with filters (Status, Priority, Category)</li>
+                    <li>Assign to committee members or vendors</li>
+                    <li>Change status: Open → In Progress → Resolved</li>
+                    <li>Add internal notes</li>
+                </ul>
+                
+                <h3>4.7 AI Inbox Summary (Committee/Admin)</h3>
+                <p>Auto-loads on dashboard. Fetches today's complaints and sends to Gemini API for summarization:</p>
+                <ul>
+                    <li>Groups similar complaints</li>
+                    <li>Flags urgent with [URGENT]</li>
+                    <li>Shows total count and unique flats</li>
+                    <li>Cached for 5 minutes</li>
+                    <li>Refresh button available</li>
+                </ul>
+            </section>
+            
+            <section id="bylaws">
+                <div class="section-header">
+                    <h2><i class="fas fa-gavel me-2"></i>5. Bylaw Bot (AI Feature)</h2>
+                </div>
+                
+                <h3>5.1 Upload Bylaw PDF (Admin)</h3>
+                <ol class="step-list">
+                    <li>Go to Admin Panel → Bylaws</li>
+                    <li>Click "Upload PDF"</li>
+                    <li>Enter document title and version</li>
+                    <li>Select PDF file (max 10MB)</li>
+                    <li>Upload → text automatically extracted</li>
+                    <li>Available for AI queries immediately</li>
+                </ol>
+                
+                <h3>5.2 Ask Bylaw Bot</h3>
+                <p>Chat-style interface with quick-question chips:</p>
+                <ul>
+                    <li>"Gym hours?"</li>
+                    <li>"Can I renovate on Sunday?"</li>
+                    <li>"Visitor parking rule?"</li>
+                </ul>
+                <p>Or type any question. Gemini reads bylaw text and answers, citing exact Rule numbers.</p>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title"><i class="fas fa-lightbulb"></i> Sample Questions</div>
+                    <ul class="mb-0">
+                        <li>Can I renovate on Sunday? → Rule 4.2: Not permitted...</li>
+                        <li>What are gym hours? → Rule 14.1: 6 AM to 10 PM...</li>
+                        <li>Can I keep a pet? → Rule 8.1: NOC required...</li>
+                    </ul>
+                </div>
+            </section>
+            
+            <section id="services">
+                <div class="section-header">
+                    <h2><i class="fas fa-tools me-2"></i>6. Service Booking System</h2>
+                </div>
+                
+                <h3>6.1 Available Services</h3>
+                <p>Default services seeded in the system:</p>
+                <ul>
+                    <li>Plumber - Fix taps, pipes, drainage</li>
+                    <li>Electrician - Wiring, switches, MCB</li>
+                    <li>Laundry - Pickup and delivery</li>
+                    <li>Carpenter - Furniture and fixtures</li>
+                </ul>
+                
+                <h3>6.2 How to Book (Resident)</h3>
+                <ol class="step-list">
+                    <li>Go to Services tab</li>
+                    <li>See service cards with vendor name and price</li>
+                    <li>Click "Book" on desired service</li>
+                    <li>Select date from date picker</li>
+                    <li>Available time slots load as radio buttons</li>
+                    <li>Select slot and click Confirm</li>
+                    <li>Booking confirmed with ID</li>
+                    <li>Slot marked unavailable for others</li>
+                </ol>
+                
+                <h3>6.3 Cancel Booking</h3>
+                <p>My Bookings section shows all bookings. Cancel available if more than 2 hours before slot. On cancel, slot becomes available again.</p>
+                
+                <h3>6.4 Admin Manages Services</h3>
+                <p>Admin can add new services with vendor details, set price per slot, generate slots in bulk, and activate/deactivate services.</p>
+            </section>
+            
+            <section id="finance">
+                <div class="section-header">
+                    <h2><i class="fas fa-money-bill-wave me-2"></i>7. Maintenance & Accounts</h2>
+                </div>
+                
+                <h3>7.1 Monthly Maintenance Ledger (Committee)</h3>
+                <p>Committee enters expense categories monthly:</p>
+                <ul>
+                    <li>Staff salaries</li>
+                    <li>Lift AMC</li>
+                    <li>Generator fuel</li>
+                    <li>Water charges</li>
+                    <li>Sinking fund</li>
+                    <li>Garden and misc</li>
+                </ul>
+                <p>Total auto-calculated. AI generates plain-language explanation.</p>
+                
+                <h3>7.2 Dues Management (Committee)</h3>
+                <p>When maintenance is saved, dues auto-generated for all flats using formula:</p>
+                <pre>per_flat_amount = total_maintenance / total_flats</pre>
+                
+                <p>Committee can mark dues as paid with payment reference number.</p>
+                
+                <h3>7.3 Resident Dues View</h3>
+                <p>Residents see current month dues with paid/unpaid status, AI explanation, and payment history.</p>
+            </section>
+            
+            <section id="notices">
+                <div class="section-header">
+                    <h2><i class="fas fa-bullhorn me-2"></i>8. Notice Board</h2>
+                </div>
+                
+                <h3>8.1 Post Notice (Committee/Admin)</h3>
+                <p>Fields: Title, Body, Pin toggle, Expiry date. Pinned notices appear first always.</p>
+                
+                <h3>8.2 View Notices (All Roles)</h3>
+                <p>Pinned notices shown at top with pin icon. All notices in reverse chronological order.</p>
+                
+                <h3>8.3 Delete Notice</h3>
+                <p>Delete button on each notice with confirmation.</p>
+            </section>
+            
+            <section id="admin">
+                <div class="section-header">
+                    <h2><i class="fas fa-user-shield me-2"></i>9. Admin Panel Features</h2>
+                </div>
+                
+                <h3>9.1 Society Management</h3>
+                <p>Add, edit, activate/deactivate societies. View stats: total flats, users, open complaints.</p>
+                
+                <h3>9.2 User Management</h3>
+                <p>View all users with role filter. Approve pending registrations. Change roles. Deactivate accounts.</p>
+                
+                <h3>9.3 Bylaw PDF Management</h3>
+                <p>Upload new PDF, view version history, set active version, preview extracted text.</p>
+                
+                <h3>9.4 Service & Vendor Management</h3>
+                <p>Add/edit services, manage vendor details, generate time slots in bulk.</p>
+                
+                <h3>9.5 Audit Log</h3>
+                <p>Every action logged: who, what, when, which record. Filterable and paginated. Cannot be deleted or modified.</p>
+            </section>
+            
+            <!-- SECTION 4: API REFERENCE -->
+            <section id="api">
+                <div class="section-header">
+                    <h2><i class="fas fa-code me-2"></i>10. API Reference</h2>
+                </div>
+                
+                <h3>Authentication APIs</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Endpoint</th>
+                            <th>Method</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>/api/auth/register/</code></td>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td>Register new resident</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/auth/login/</code></td>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td>Login and get JWT tokens</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/auth/logout/</code></td>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td>Logout (blacklist token)</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/auth/me/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>Get current user profile</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/auth/users/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>List all users (Admin/Committee)</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/auth/users/&lt;id&gt;/approve/</code></td>
+                            <td><span class="method-badge method-put">PUT</span></td>
+                            <td>Approve user registration</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>Complaint APIs</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Endpoint</th>
+                            <th>Method</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>/api/complaints/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>List complaints</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/complaints/</code></td>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td>Create complaint</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/complaints/&lt;id&gt;/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>Get complaint detail</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/complaints/&lt;id&gt;/</code></td>
+                            <td><span class="method-badge method-put">PUT</span></td>
+                            <td>Update complaint</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/complaints/&lt;id&gt;/</code></td>
+                            <td><span class="method-badge method-delete">DELETE</span></td>
+                            <td>Delete complaint</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/complaints/&lt;id&gt;/notes/</code></td>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td>Add note to complaint</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/complaints/voice/transcribe/</code></td>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td>Transcribe voice complaint</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>Bylaw APIs</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Endpoint</th>
+                            <th>Method</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>/api/bylaws/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>List bylaws</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/bylaws/upload/</code></td>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td>Upload bylaw PDF</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/bylaw/ask/</code></td>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td>Ask bylaw question</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>Service APIs</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Endpoint</th>
+                            <th>Method</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>/api/services/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>List services</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/services/&lt;id&gt;/slots/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>Get available slots</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/bookings/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>List bookings</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/bookings/</code></td>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td>Create booking</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/bookings/&lt;id&gt;/cancel/</code></td>
+                            <td><span class="method-badge method-put">PUT</span></td>
+                            <td>Cancel booking</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>Finance APIs</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Endpoint</th>
+                            <th>Method</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>/api/finance/maintenance/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>List maintenance entries</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/finance/maintenance/&lt;month&gt;/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>Get month summary</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/finance/dues/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>List all dues (Admin/Committee)</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/finance/dues/me/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>Get my dues</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/finance/dues/&lt;id&gt;/mark-paid/</code></td>
+                            <td><span class="method-badge method-put">PUT</span></td>
+                            <td>Mark dues as paid</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>Notice APIs</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Endpoint</th>
+                            <th>Method</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>/api/notices/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>List notices</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/notices/</code></td>
+                            <td><span class="method-badge method-post">POST</span></td>
+                            <td>Create notice</td>
+                        </tr>
+                        <tr>
+                            <td><code>/api/notices/&lt;id&gt;/</code></td>
+                            <td><span class="method-badge method-delete">DELETE</span></td>
+                            <td>Delete notice</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>AI APIs</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Endpoint</th>
+                            <th>Method</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>/api/ai/summary/</code></td>
+                            <td><span class="method-badge method-get">GET</span></td>
+                            <td>Get AI complaint summary</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <!-- SECTION 5: DATABASE -->
+            <section id="database">
+                <div class="section-header">
+                    <h2><i class="fas fa-database me-2"></i>11. Database Schema</h2>
+                </div>
+                
+                <h3>Core Tables</h3>
+                
+                <h4>societies</h4>
+                <table class="table table-bordered table-striped">
+                    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr><td>id</td><td>BIGINT</td><td>PK, AUTO_INCREMENT</td><td>Primary key</td></tr>
+                        <tr><td>name</td><td>VARCHAR(255)</td><td>NOT NULL</td><td>Society name</td></tr>
+                        <tr><td>address</td><td>TEXT</td><td>NOT NULL</td><td>Full address</td></tr>
+                        <tr><td>city</td><td>VARCHAR(100)</td><td>NOT NULL</td><td>City</td></tr>
+                        <tr><td>state</td><td>VARCHAR(100)</td><td>NOT NULL</td><td>State</td></tr>
+                        <tr><td>wing_count</td><td>INT</td><td>DEFAULT 1</td><td>Number of wings</td></tr>
+                        <tr><td>total_flats</td><td>INT</td><td>NOT NULL</td><td>Total flat count</td></tr>
+                        <tr><td>plan_type</td><td>VARCHAR(20)</td><td>DEFAULT 'standard'</td><td>basic/standard/premium</td></tr>
+                        <tr><td>is_active</td><td>BOOLEAN</td><td>DEFAULT TRUE</td><td>Active status</td></tr>
+                        <tr><td>created_at</td><td>DATETIME</td><td>NOT NULL</td><td>Creation timestamp</td></tr>
+                    </tbody>
+                </table>
+                
+                <h4>users (CustomUser)</h4>
+                <table class="table table-bordered table-striped">
+                    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr><td>id</td><td>BIGINT</td><td>PK, AUTO_INCREMENT</td><td>Primary key</td></tr>
+                        <tr><td>username</td><td>VARCHAR(150)</td><td>UNIQUE, NOT NULL</td><td>Username</td></tr>
+                        <tr><td>email</td><td>VARCHAR(150)</td><td>UNIQUE, NOT NULL</td><td>Email (username)</td></tr>
+                        <tr><td>password</td><td>VARCHAR(128)</td><td>NOT NULL</td><td>Hashed password</td></tr>
+                        <tr><td>role</td><td>VARCHAR(20)</td><td>DEFAULT 'resident'</td><td>admin/committee/resident</td></tr>
+                        <tr><td>flat_no</td><td>VARCHAR(20)</td><td>NULL</td><td>Flat number</td></tr>
+                        <tr><td>wing</td><td>VARCHAR(10)</td><td>NULL</td><td>Wing/Block</td></tr>
+                        <tr><td>phone</td><td>VARCHAR(15)</td><td>NULL</td><td>Phone number</td></tr>
+                        <tr><td>society_id</td><td>BIGINT</td><td>FK → societies.id</td><td>Society reference</td></tr>
+                        <tr><td>is_approved</td><td>BOOLEAN</td><td>DEFAULT FALSE</td><td>Approved status</td></tr>
+                        <tr><td>is_active</td><td>BOOLEAN</td><td>DEFAULT TRUE</td><td>Active status</td></tr>
+                        <tr><td>created_at</td><td>DATETIME</td><td>NOT NULL</td><td>Creation timestamp</td></tr>
+                    </tbody>
+                </table>
+                
+                <h4>complaints</h4>
+                <table class="table table-bordered table-striped">
+                    <thead><tr><th>Column</th><th>Type</th><th>Constraints</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr><td>id</td><td>BIGINT</td><td>PK, AUTO_INCREMENT</td><td>Primary key</td></tr>
+                        <tr><td>society_id</td><td>BIGINT</td><td>FK → societies.id</td><td>Society reference</td></tr>
+                        <tr><td>submitted_by_id</td><td>BIGINT</td><td>FK → users.id</td><td>Submitter</td></tr>
+                        <tr><td>title</td><td>VARCHAR(255)</td><td>NOT NULL</td><td>Complaint title</td></tr>
+                        <tr><td>description</td><td>TEXT</td><td>NULL</td><td>Full description</td></tr>
+                        <tr><td>audio_file_path</td><td>VARCHAR(500)</td><td>NULL</td><td>Voice recording path</td></tr>
+                        <tr><td>ai_transcript</td><td>TEXT</td><td>NULL</td><td>AI transcript</td></tr>
+                        <tr><td>language</td><td>VARCHAR(20)</td><td>DEFAULT 'en'</td><td>Detected language</td></tr>
+                        <tr><td>category</td><td>VARCHAR(20)</td><td>DEFAULT 'other'</td><td>Category</td></tr>
+                        <tr><td>priority</td><td>VARCHAR(20)</td><td>DEFAULT 'medium'</td><td>low/medium/urgent</td></tr>
+                        <tr><td>status</td><td>VARCHAR(20)</td><td>DEFAULT 'open'</td><td>open/in_progress/resolved/closed</td></tr>
+                        <tr><td>assigned_to_id</td><td>BIGINT</td><td>FK → users.id, NULL</td><td>Assignee</td></tr>
+                        <tr><td>created_at</td><td>DATETIME</td><td>NOT NULL</td><td>Creation timestamp</td></tr>
+                        <tr><td>updated_at</td><td>DATETIME</td><td>NOT NULL</td><td>Last update</td></tr>
+                    </tbody>
+                </table>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title"><i class="fas fa-info-circle"></i> Additional Tables</div>
+                    <div>Other tables include: bylaws, services, service_slots, bookings, maintenance_categories, maintenance_ledger, dues, notices, audit_logs, complaint_notes</div>
+                </div>
+            </section>
+            
+            <!-- SECTION 6: INSTALLATION -->
+            <section id="installation">
+                <div class="section-header">
+                    <h2><i class="fas fa-download me-2"></i>12. How to Install</h2>
+                </div>
+                
+                <h3>Prerequisites</h3>
+                <ul>
+                    <li>Python 3.11+ → <a href="https://www.python.org/downloads">python.org/downloads</a></li>
+                    <li>MySQL 8.0+ → <a href="https://dev.mysql.com/downloads/mysql">dev.mysql.com</a></li>
+                    <li>Git (optional) → <a href="https://git-scm.com">git-scm.com</a></li>
+                </ul>
+                
+                <h3>Step 1: Create Project</h3>
+                <pre>git clone &lt;your-repo-url&gt;
+cd panchayat_project</pre>
+                
+                <h3>Step 2: Create Virtual Environment</h3>
+                <pre>python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Mac/Linux
+source venv/bin/activate</pre>
+                
+                <h3>Step 3: Install Dependencies</h3>
+                <pre>pip install -r requirements.txt</pre>
+                
+                <h3>Step 4: Create MySQL Database</h3>
+                <pre>CREATE DATABASE panchayat_db 
+  CHARACTER SET utf8mb4 
+  COLLATE utf8mb4_unicode_ci;</pre>
+                
+                <h3>Step 5: Create .env File</h3>
+                <pre>SECRET_KEY=your-django-secret-key
+DEBUG=True
+DB_NAME=panchayat_db
+DB_USER=root
+DB_PASSWORD=root
+DB_HOST=localhost
+DB_PORT=3306
+GEMINI_API_KEY=your-gemini-api-key
+GROQ_API_KEY=your-groq-api-key</pre>
+                
+                <div class="callout callout-info">
+                    <div class="callout-title"><i class="fas fa-key"></i> Getting API Keys</div>
+                    <div><strong>Gemini:</strong> <a href="https://aistudio.google.com">aistudio.google.com</a> → Sign in → Get API Key</div>
+                    <div><strong>Groq:</strong> <a href="https://console.groq.com">console.groq.com</a> → Sign up → API Keys</div>
+                </div>
+                
+                <h3>Step 6: Run Migrations</h3>
+                <pre>python manage.py migrate</pre>
+                
+                <h3>Step 7: Seed Sample Data</h3>
+                <pre>python manage.py seed_panchayat</pre>
+                
+                <h3>Step 8: Run the Server</h3>
+                <pre>python manage.py runserver
+
+# Open browser
+http://127.0.0.1:8000</pre>
+            </section>
+            
+            <!-- SECTION 7: CREDENTIALS -->
+            <section id="quick-start">
+                <div class="section-header">
+                    <h2><i class="fas fa-rocket me-2"></i>13. Quick Start Credentials</h2>
+                </div>
+                
+                <div class="credentials-box">
+                    <h4><i class="fas fa-key me-2"></i>Login Credentials</h4>
+                    <div class="credential-item">
+                        <span class="role">Admin</span>
+                        <span class="email">admin@panchayat.com</span>
+                        <span class="password">Admin@123</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="role">Committee</span>
+                        <span class="email">secretary@splendour.com</span>
+                        <span class="password">Committee@123</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="role">Committee</span>
+                        <span class="email">treasurer@splendour.com</span>
+                        <span class="password">Committee@123</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="role">Resident</span>
+                        <span class="email">resident1@panchayat.com</span>
+                        <span class="password">Resident@123</span>
+                    </div>
+                    <div class="credential-item">
+                        <span class="role">Resident</span>
+                        <span class="email">resident2@panchayat.com</span>
+                        <span class="password">Resident@123</span>
+                    </div>
+                </div>
+                
+                <h3>Page URLs</h3>
+                <table class="table table-bordered">
+                    <thead><tr><th>Page</th><th>URL</th></tr></thead>
+                    <tbody>
+                        <tr><td>Login</td><td><code>/login/</code></td></tr>
+                        <tr><td>Register</td><td><code>/register/</code></td></tr>
+                        <tr><td>Admin Panel</td><td><code>/admin-panel/</code></td></tr>
+                        <tr><td>Committee</td><td><code>/committee/</code></td></tr>
+                        <tr><td>Resident</td><td><code>/resident/</code></td></tr>
+                    </tbody>
+                </table>
+                
+                <h3>Quick Commands</h3>
+                <table class="table table-bordered">
+                    <thead><tr><th>Task</th><th>Command</th></tr></thead>
+                    <tbody>
+                        <tr><td>Activate venv (Win)</td><td><code>venv\Scripts\activate</code></td></tr>
+                        <tr><td>Activate venv (Mac)</td><td><code>source venv/bin/activate</code></td></tr>
+                        <tr><td>Install deps</td><td><code>pip install -r requirements.txt</code></td></tr>
+                        <tr><td>Create DB</td><td><code>python manage.py migrate</code></td></tr>
+                        <tr><td>Seed data</td><td><code>python manage.py seed_panchayat</code></td></tr>
+                        <tr><td>Start server</td><td><code>python manage.py runserver</code></td></tr>
+                    </tbody>
+                </table>
+            </section>
+            
+            <!-- SECTION 8: TROUBLESHOOTING -->
+            <section id="troubleshooting">
+                <div class="section-header">
+                    <h2><i class="fas fa-wrench me-2"></i>14. Troubleshooting</h2>
+                </div>
+                
+                <h3>Installation Errors</h3>
+                <div class="card">
+                    <div class="card-header">ERROR: mysqlclient not found</div>
+                    <div class="card-body">
+                        <strong>Fix:</strong>
+                        <ul class="mb-0">
+                            <li>Windows: <code>pip install mysqlclient</code></li>
+                            <li>Mac: <code>brew install mysql-client</code> then <code>pip install mysqlclient</code></li>
+                            <li>Ubuntu: <code>sudo apt install python3-dev default-libmysqlclient-dev</code> then <code>pip install mysqlclient</code></li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">ERROR: django.db.utils.OperationalError: (1049) Unknown database</div>
+                    <div class="card-body">
+                        <strong>Fix:</strong> Create database first in MySQL:
+                        <pre>CREATE DATABASE panchayat_db CHARACTER SET utf8mb4;</pre>
+                    </div>
+                </div>
+                
+                <h3>Login Errors</h3>
+                <div class="card">
+                    <div class="card-header">ERROR: Invalid credentials</div>
+                    <div class="card-body">
+                        <strong>Fix:</strong> Run seed command again:
+                        <pre>python manage.py seed_panchayat</pre>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">ERROR: Redirects to login on every page</div>
+                    <div class="card-body">
+                        <strong>Fix:</strong> Token expired. Login again. Check localStorage in DevTools (F12) → Application → Local Storage.
+                    </div>
+                </div>
+                
+                <h3>Voice Recording Errors</h3>
+                <div class="card">
+                    <div class="card-header">ERROR: Microphone permission denied</div>
+                    <div class="card-body">
+                        <strong>Fix:</strong> Click lock icon in browser URL bar → Allow Microphone. Voice only works on localhost or HTTPS.
+                    </div>
+                </div>
+                
+                <h3>Bylaw Bot Errors</h3>
+                <div class="card">
+                    <div class="card-header">ERROR: Bot says "Bylaws not found"</div>
+                    <div class="card-body">
+                        <strong>Fix:</strong> Admin must upload bylaw PDF first. Go to /admin-panel/ → Bylaws → Upload PDF.
+                    </div>
+                </div>
+                
+                <h3>Edit/Delete Button Not Showing</h3>
+                <div class="card">
+                    <div class="card-header">Edit or Delete button missing on complaint</div>
+                    <div class="card-body">
+                        <strong>Check:</strong>
+                        <ul class="mb-0">
+                            <li>Edit shows for: Open, In Progress</li>
+                            <li>Delete shows for: Open only</li>
+                            <li>Open DevTools → Network → /api/complaints/ → check can_edit/can_delete in response</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- SECTION 9: FILE STRUCTURE -->
+            <section id="files">
+                <div class="section-header">
+                    <h2><i class="fas fa-folder-tree me-2"></i>15. Project File Structure</h2>
+                </div>
+                
+                <pre class="code-wrap">panchayat_project/
+├── .env                          ← Secret keys (never commit)
+├── manage.py                    ← Django management commands
+├── requirements.txt             ← Python dependencies
+├── panchayat/
+│   ├── settings.py              ← Django configuration
+│   ├── urls.py                   ← Master URL routing
+│   └── wsgi.py                  ← Production entry
+├── apps/
+│   ├── accounts/                 ← Auth, users, societies
+│   │   ├── models.py             ← CustomUser, Society
+│   │   ├── views.py             ← Login, register, approve
+│   │   ├── serializers.py       ← User serialization
+│   │   └── urls.py              ← Auth URL patterns
+│   ├── complaints/              ← Complaint management
+│   │   ├── models.py            ← Complaint, ComplaintNote
+│   │   ├── views.py             ← CRUD + voice APIs
+│   │   └── urls.py             ← Complaint URLs
+│   ├── bylaws/                  ← PDF upload + AI Q&A
+│   ├── services/                ← Service booking
+│   ├── finance/                 ← Maintenance + dues
+│   ├── notices/                 ← Notice board
+│   └── ai_engine/              ← AI integrations
+│       ├── gemini_client.py     ← Gemini API wrapper
+│       ├── groq_client.py     ← Groq Whisper wrapper
+│       └── views.py            ← AI summary endpoint
+├── templates/
+│   ├── base.html               ← Common layout
+│   ├── login.html             ← Login page
+│   ├── register.html          ← Registration
+│   ├── admin/dashboard.html  ← Admin panel
+│   ├── committee/dashboard.html ← Committee dashboard
+│   └── resident/dashboard.html ← Resident dashboard
+├── static/
+│   ├── css/panchayat.css    ← Custom styles
+│   └── js/
+│       ├── api.js            ← Fetch with JWT
+│       ├── voice-recorder.js ← MediaRecorder
+│       ├── bylaw-chat.js   ← Chat UI
+│       ├── admin.js        ← Admin JS
+│       ├── committee.js    ← Committee JS
+│       └── resident.js     ← Resident JS
+└── media/
+    ├── bylaws/              ← Uploaded PDFs
+    └── audio/              ← Voice recordings</pre>
+            </section>
+            
+            <!-- Footer -->
+            <footer>
+                <p><strong>Panchayat v1.0</strong> | Mahindra Splendour CHS</p>
+                <p class="mb-0">Housing Society Management System Documentation</p>
+                <p class="mt-2 text-muted">Built with Django 4.2 + Bootstrap 5 + Google Gemini + Groq Whisper</p>
+            </footer>
+        </div>
+    </main>
+    
+    <!-- Back to Top -->
+    <a href="#" class="back-to-top" title="Back to top">
+        <i class="fas fa-arrow-up"></i>
+    </a>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Highlight active sidebar link on scroll
+        const sections = document.querySelectorAll('section[id]');
+        const navLinks = document.querySelectorAll('.sidebar a');
+        
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+        
+        // Smooth scroll for sidebar links
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href');
+                if (targetId.startsWith('#')) {
+                    document.querySelector(targetId).scrollIntoView({ behavior: 'smooth' });
+                    // Close mobile menu
+                    document.querySelector('.sidebar').classList.remove('show');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
