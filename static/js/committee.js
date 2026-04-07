@@ -1,5 +1,13 @@
 // Committee Dashboard JavaScript
 
+// Console logging helper
+const DEBUG = true;
+function log(section, message, data = null) {
+  if (DEBUG) {
+    console.log(`[COMMITTEE-${section}] ${message}`, data || '');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   if (!requireAuth()) return;
   if (!['admin', 'committee'].includes(localStorage.getItem('panchayat_role'))) {
@@ -25,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (duesMonthInput) duesMonthInput.value = monthStr;
 
   loadDashboard();
+  loadProfile();
   loadComplaints();
   loadNotices();
   loadMaintenance();
@@ -333,6 +342,7 @@ async function loadBookings() {
 
 // Export
 window.switchTab = switchTab;
+window.loadProfile = loadProfile;
 window.loadAISummary = loadAISummary;
 window.loadComplaints = loadComplaints;
 window.loadNotices = loadNotices;
@@ -342,3 +352,197 @@ window.loadMaintenance = loadMaintenance;
 window.loadDues = loadDues;
 window.markPaid = markPaid;
 window.loadBookings = loadBookings;
+
+// ============================================
+// Profile Management
+// ============================================
+async function loadProfile() {
+  console.log('[COMMITTEE-PROFILE] Starting loadProfile...');
+  
+  try {
+    // Fetch fresh profile data from API
+    console.log('[COMMITTEE-PROFILE] Calling /auth/me/ API...');
+    const res = await api.get('/auth/me/');
+    console.log('[COMMITTEE-PROFILE] API Response status:', res.status);
+    const result = await res.json();
+    console.log('[COMMITTEE-PROFILE] API Response data:', result);
+    
+    let user = null;
+    
+    if (res.ok && result.success) {
+      user = result.data;
+      console.log('[COMMITTEE-PROFILE] Got user from API:', user);
+      // Update localStorage with fresh data
+      localStorage.setItem('panchayat_user', JSON.stringify(user));
+    } else {
+      // Fallback to cached data
+      console.log('[COMMITTEE-PROFILE] API failed, using cached data');
+      user = auth.getUser();
+    }
+    
+    if (!user) {
+      console.log('[COMMITTEE-PROFILE] No user found');
+      return;
+    }
+    
+    console.log('[COMMITTEE-PROFILE] User data:', user);
+    
+    // Get DOM elements
+    const nameEl = document.getElementById('profile-name');
+    const emailEl = document.getElementById('profile-email');
+    const phoneEl = document.getElementById('profile-phone');
+    const roleEl = document.getElementById('profile-role');
+    const flatEl = document.getElementById('profile-flat');
+    const wingEl = document.getElementById('profile-wing');
+    const userAvatar = document.getElementById('profile-avatar');
+    const roleBadge = document.getElementById('profile-role-badge');
+    
+    console.log('[COMMITTEE-PROFILE] DOM Elements found:', {
+      nameEl: !!nameEl,
+      emailEl: !!emailEl,
+      phoneEl: !!phoneEl,
+      roleEl: !!roleEl,
+      flatEl: !!flatEl,
+      wingEl: !!wingEl,
+      userAvatar: !!userAvatar,
+      roleBadge: !!roleBadge
+    });
+    
+    // Format full name
+    const nameValue = user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || user.email || 'User';
+    
+    // Get avatar initial
+    const avatarInitial = (user.full_name || user.first_name || user.last_name || user.username || user.email || 'U')[0].toUpperCase();
+    
+    // Format role for display
+    const roleDisplay = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User';
+    
+    // Update DOM elements
+    if (nameEl) nameEl.textContent = nameValue;
+    if (emailEl) emailEl.textContent = user.email || 'N/A';
+    if (phoneEl) phoneEl.textContent = user.phone || 'N/A';
+    if (roleEl) roleEl.textContent = roleDisplay;
+    if (flatEl) flatEl.textContent = user.flat_no || 'N/A';
+    if (wingEl) wingEl.textContent = user.wing || 'N/A';
+    if (userAvatar) userAvatar.textContent = avatarInitial;
+    if (roleBadge) roleBadge.textContent = roleDisplay;
+    
+    console.log('[COMMITTEE-PROFILE] Profile loaded successfully');
+  } catch (e) {
+    console.error('[COMMITTEE-PROFILE] Error loading profile:', e);
+    // Fallback to cached data
+    const user = auth.getUser();
+    console.log('[COMMITTEE-PROFILE] Fallback user:', user);
+    if (user) {
+      const nameEl = document.getElementById('profile-name');
+      const emailEl = document.getElementById('profile-email');
+      const phoneEl = document.getElementById('profile-phone');
+      const userAvatar = document.getElementById('profile-avatar');
+      
+      const nameValue = user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || user.email || 'User';
+      const avatarInitial = (user.full_name || user.first_name || user.last_name || user.username || user.email || 'U')[0].toUpperCase();
+      
+      if (nameEl) nameEl.textContent = nameValue;
+      if (emailEl) emailEl.textContent = user.email || 'N/A';
+      if (phoneEl) phoneEl.textContent = user.phone || 'N/A';
+      if (userAvatar) userAvatar.textContent = avatarInitial;
+    }
+  }
+}
+
+// ============================================
+// Change Password Form Handler
+// ============================================
+document.getElementById('change-password-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  log('PASSWORD', 'Change password form submitted');
+  
+  const currentPassword = document.getElementById('current-password').value;
+  const newPassword = document.getElementById('new-password').value;
+  const confirmPassword = document.getElementById('confirm-password').value;
+  
+  // Client-side validation
+  if (!currentPassword) {
+    showToast('Please enter your current password', 'error');
+    return;
+  }
+  
+  if (!newPassword) {
+    showToast('Please enter a new password', 'error');
+    return;
+  }
+  
+  if (newPassword.length < 8) {
+    showToast('New password must be at least 8 characters long', 'error');
+    return;
+  }
+  
+  if (newPassword !== confirmPassword) {
+    showToast('New passwords do not match', 'error');
+    return;
+  }
+  
+  if (currentPassword === newPassword) {
+    showToast('New password must be different from current password', 'error');
+    return;
+  }
+  
+  const btn = e.target.querySelector('button[type="submit"]');
+  setButtonLoading(btn, true);
+  
+  try {
+    const res = await api.post('/auth/change-password/', {
+      current_password: currentPassword,
+      new_password: newPassword,
+      confirm_password: confirmPassword
+    });
+    
+    const result = await res.json();
+    log('PASSWORD', 'Change password response:', result);
+    
+    if (res.ok && result.success) {
+      showToast('Password changed successfully! Please log in again.', 'success');
+      e.target.reset();
+      
+      // Close modal
+      const modal = document.getElementById('changePasswordModal');
+      if (modal) {
+        const bsModal = bootstrap.Modal.getInstance(modal);
+        if (bsModal) bsModal.hide();
+      }
+      
+      // Log out user after successful password change
+      setTimeout(() => {
+        auth.logout();
+        window.location.href = '/login/';
+      }, 2000);
+    } else {
+      showToast(result.message || result.error || 'Failed to change password', 'error');
+    }
+  } catch (e) {
+    console.error('PASSWORD', 'Error:', e);
+    showToast('Failed to change password. Please try again.', 'error');
+  }
+  
+  setButtonLoading(btn, false);
+});
+
+// ============================================
+// Initialize Profile on Tab Switch
+// ============================================
+document.addEventListener('DOMContentLoaded', () => {
+  // Override switchTab to load profile when profile tab is activated
+  const originalSwitchTab = window.switchTab;
+  window.switchTab = function(tabId) {
+    originalSwitchTab(tabId);
+    if (tabId === 'profile') {
+      loadProfile();
+    }
+  };
+
+  const activeTabLink = document.querySelector('.sidebar .nav-link.active');
+  const activeTab = activeTabLink?.dataset?.tab || (document.getElementById('tab-profile')?.classList.contains('active') ? 'profile' : null);
+  if (activeTab === 'profile') {
+    loadProfile();
+  }
+});

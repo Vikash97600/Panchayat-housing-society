@@ -185,6 +185,15 @@ function showToast(message, type = 'success', title = '') {
   }, 4000);
 }
 
+function log(section, message, data = null) {
+  if (!window.console) return;
+  if (data !== null) {
+    console.debug(`[${section}]`, message, data);
+  } else {
+    console.debug(`[${section}]`, message);
+  }
+}
+
 // Format date
 function formatDate(dateStr) {
   if (!dateStr) return '-';
@@ -320,6 +329,7 @@ window.auth = auth;
 window.requireAuth = requireAuth;
 window.handleRoleRedirect = handleRoleRedirect;
 window.showToast = showToast;
+window.log = log;
 window.formatDate = formatDate;
 window.formatTime = formatTime;
 window.getGreeting = getGreeting;

@@ -6,6 +6,14 @@
   <meta name="description" content="Panchayat - Modern Housing Society Management System">
   <title>{% block title %}Panchayat{% endblock %}</title>
   
+  <!-- Theme initialization - prevent flash -->
+  <script>
+    (function() {
+      var theme = localStorage.getItem('panchayat_theme') || 'light';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,6 +30,7 @@
   
   <!-- Custom CSS -->
   <link href="/static/css/panchayat.css" rel="stylesheet">
+  <link href="/static/css/themes.css" rel="stylesheet">
   
   <style>
     /* Page transition animations */
@@ -119,6 +128,7 @@
   
   <!-- Core JS -->
   <script src="/static/js/api.js"></script>
+  <script src="/static/js/theme-switcher.js"></script>
   <script src="/static/js/voice-recorder.js"></script>
   <script src="/static/js/bylaw-chat.js"></script>
   

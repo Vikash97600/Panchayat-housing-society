@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.conf import settings
 from django.core.cache import cache
+from django.http import FileResponse
+from django.core.exceptions import ObjectDoesNotExist
 import os
 import logging
 
@@ -181,4 +183,36 @@ Society Bye-Laws:
             return Response({
                 'success': False,
                 'message': 'AI service unavailable. Please try again later.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class BylawDownloadView(APIView):
+    permission_classes = [IsAdminOrCommittee]
+
+    def get(self, request, bylaw_id):
+        try:
+            bylaw = Bylaw.objects.get(id=bylaw_id, society=request.user.society, is_active=True)
+        except ObjectDoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Bylaw not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        file_path = os.path.join(settings.MEDIA_ROOT, bylaw.pdf_path)
+        
+        if not os.path.exists(file_path):
+            return Response({
+                'success': False,
+                'message': 'File not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            response = FileResponse(open(file_path, 'rb'), content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{bylaw.title}.pdf"'
+            return response
+        except Exception as e:
+            logger.error(f"Bylaw download error: {e}")
+            return Response({
+                'success': False,
+                'message': 'Error downloading file'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
