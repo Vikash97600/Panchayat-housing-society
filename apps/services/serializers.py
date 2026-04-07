@@ -18,10 +18,14 @@ class ServiceCreateSerializer(serializers.ModelSerializer):
 
 
 class ServiceSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
+    updated_by_name = serializers.CharField(source='updated_by.full_name', read_only=True)
+    
     class Meta:
         model = Service
         fields = ['id', 'society', 'name', 'description', 'vendor_name', 
-                  'vendor_phone', 'price_per_slot', 'is_active']
+                  'vendor_phone', 'price_per_slot', 'is_active', 'created_at', 
+                  'updated_at', 'created_by', 'updated_by', 'created_by_name', 'updated_by_name']
 
 
 class ServiceWithSlotsSerializer(ServiceSerializer):

@@ -460,9 +460,38 @@
     <div id="tab-services" class="tab-content d-none">
       <div class="page-header">
         <h2><i class="fas fa-tools me-2"></i>Services</h2>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
-          <i class="fas fa-plus me-2"></i>Add Service
-        </button>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary" id="bulk-delete-btn" disabled>
+            <i class="fas fa-trash me-2"></i>Delete Selected
+          </button>
+          <button class="btn btn-outline-secondary" id="bulk-activate-btn" disabled>
+            <i class="fas fa-check me-2"></i>Activate Selected
+          </button>
+          <button class="btn btn-outline-secondary" id="bulk-deactivate-btn" disabled>
+            <i class="fas fa-times me-2"></i>Deactivate Selected
+          </button>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
+            <i class="fas fa-plus me-2"></i>Add Service
+          </button>
+        </div>
+      </div>
+      
+      <!-- Search and Filter Bar -->
+      <div class="filter-bar">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <div class="input-group" style="max-width: 300px;">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+            <input type="text" class="form-control" id="service-search" placeholder="Search services...">
+          </div>
+          <select class="form-select" id="service-status-filter" style="min-width: 150px;">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <button class="btn btn-outline-secondary" id="clear-filters">
+            <i class="fas fa-times me-2"></i>Clear
+          </button>
+        </div>
       </div>
       
       <div class="card">
@@ -471,17 +500,21 @@
             <table class="table table-hover mb-0" id="services-table">
               <thead>
                 <tr>
+                  <th width="40" class="text-center">
+                    <input type="checkbox" id="select-all-services" title="Select All">
+                  </th>
                   <th>Service</th>
-                  <th>Vendor</th>
-                  <th>Contact</th>
+                  <th>Vendor Name</th>
+                  <th>Vendor Phone</th>
                   <th>Price</th>
                   <th>Status</th>
+                  <th>Last Modified</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="services-tbody">
                 <tr>
-                  <td colspan="6" class="text-center text-muted py-4">
+                  <td colspan="8" class="text-center text-muted py-4">
                     <div class="spinner"></div>
                   </td>
                 </tr>

@@ -9,6 +9,10 @@ class Service(models.Model):
     vendor_phone = models.CharField(max_length=15, blank=True, null=True)
     price_per_slot = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, related_name='created_services')
+    updated_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, related_name='updated_services')
 
     class Meta:
         db_table = 'services'

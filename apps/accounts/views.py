@@ -7,7 +7,7 @@ from django.utils import timezone
 from .models import CustomUser, Society, AuditLog
 from .serializers import (
     CustomUserSerializer, CustomUserCreateSerializer, 
-    UserLoginSerializer, UserProfileSerializer
+    UserLoginSerializer, UserProfileSerializer, SocietySerializer
 )
 
 
@@ -190,4 +190,62 @@ class ApproveUserView(generics.UpdateAPIView):
             'success': True,
             'data': CustomUserSerializer(user).data,
             'message': f'User {user.email} approved'
+        })
+
+
+class SocietyListCreateView(generics.ListCreateAPIView):
+    queryset = Society.objects.all()
+    serializer_class = SocietySerializer
+    permission_classes = [IsAdmin]
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'message': ''
+        })
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        society = serializer.save()
+        
+        log_audit(request.user, 'society_created', 'Society', society.id, {'name': society.name})
+        
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'message': 'Society created successfully'
+        }, status=status.HTTP_201_CREATED)
+
+
+class SocietyDetailView(generics.RetrieveUpdateAPIView):
+    queryset = Society.objects.all()
+    serializer_class = SocietySerializer
+    permission_classes = [IsAdmin]
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'message': ''
+        })
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        society = serializer.save()
+        
+        log_audit(request.user, 'society_updated', 'Society', society.id, {'name': society.name})
+        
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'message': 'Society updated successfully'
         })

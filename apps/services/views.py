@@ -34,8 +34,19 @@ class ServiceCreateView(generics.CreateAPIView):
     serializer_class = ServiceCreateSerializer
     permission_classes = [IsAdminOrCommittee]
     
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'message': 'Service created successfully'
+        }, status=status.HTTP_201_CREATED, headers=headers)
+    
     def perform_create(self, serializer):
-        service = serializer.save(society=self.request.user.society)
+        service = serializer.save(society=self.request.user.society, created_by=self.request.user)
         
         log_audit(self.request.user, 'service_created', 'Service', service.id,
                   {'name': service.name}, self.request)
@@ -46,10 +57,16 @@ class ServiceDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Service.objects.filter(
-            society=self.request.user.society,
-            is_active=True
-        )
+        user = self.request.user
+        if user.role in ['admin', 'committee']:
+            # Admins and committee can see all services (active/inactive)
+            return Service.objects.filter(society=user.society)
+        else:
+            # Residents can only see active services
+            return Service.objects.filter(
+                society=user.society,
+                is_active=True
+            )
 
 
 class ServiceUpdateView(generics.UpdateAPIView):
@@ -65,6 +82,10 @@ class ServiceUpdateView(generics.UpdateAPIView):
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         
+        # Update the updated_by field
+        instance.updated_by = request.user
+        instance.save(update_fields=['updated_by'])
+        
         log_audit(request.user, 'service_updated', 'Service', instance.id,
                   {'name': instance.name}, request)
         
@@ -73,6 +94,28 @@ class ServiceUpdateView(generics.UpdateAPIView):
             'data': serializer.data,
             'message': 'Service updated successfully'
         })
+
+
+class ServiceDeleteView(generics.DestroyAPIView):
+    serializer_class = ServiceSerializer
+    permission_classes = [IsAdminOrCommittee]
+    
+    def get_queryset(self):
+        return Service.objects.filter(society=self.request.user.society)
+    
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        service_id = instance.id
+        service_name = instance.name
+        self.perform_destroy(instance)
+        
+        log_audit(request.user, 'service_deleted', 'Service', service_id,
+                  {'name': service_name}, request)
+        
+        return Response({
+            'success': True,
+            'message': 'Service deleted successfully'
+        }, status=status.HTTP_200_OK)
 
 
 class ServiceSlotsView(generics.ListAPIView):
