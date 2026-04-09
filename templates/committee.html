@@ -68,6 +68,7 @@
   .stat-card-committee:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
+    cursor: pointer;
   }
   
   .stat-card-committee .stat-icon {
@@ -541,28 +542,28 @@
       
       <!-- Enhanced Stats Grid -->
       <div class="committee-stats-grid">
-        <div class="stat-card-committee primary">
+        <div class="stat-card-committee primary" onclick="switchTab('complaints')">
           <div class="stat-icon">
             <i class="fas fa-ticket-alt"></i>
           </div>
           <div class="stat-value" id="stat-open">0</div>
           <div class="stat-label">Open Tickets</div>
         </div>
-        <div class="stat-card-committee success">
+        <div class="stat-card-committee success" onclick="switchTab('complaints')">
           <div class="stat-icon">
             <i class="fas fa-check-circle"></i>
           </div>
           <div class="stat-value" id="stat-resolved">0</div>
           <div class="stat-label">Resolved Today</div>
         </div>
-        <div class="stat-card-committee warning">
+        <div class="stat-card-committee warning" onclick="switchTab('dues')">
           <div class="stat-icon">
             <i class="fas fa-money-bill-wave"></i>
           </div>
           <div class="stat-value" id="stat-pending-dues">0</div>
           <div class="stat-label">Pending Dues</div>
         </div>
-        <div class="stat-card-committee info">
+        <div class="stat-card-committee info" onclick="switchTab('notices')">
           <div class="stat-icon">
             <i class="fas fa-bullhorn"></i>
           </div>

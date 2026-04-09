@@ -91,6 +91,7 @@
   .stat-card-modern:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
+    cursor: pointer;
   }
   
   .stat-card-modern .stat-icon-wrapper {
@@ -817,7 +818,7 @@
       
       <!-- Enhanced Stats Grid -->
       <div class="dashboard-stats">
-        <div class="stat-card-modern">
+        <div class="stat-card-modern" style="cursor: pointer;" onclick="switchTab('complaints')">
           <div class="stat-icon-wrapper" style="background: var(--brand-light); color: var(--brand-primary);">
             <i class="fas fa-ticket-alt"></i>
           </div>
@@ -828,7 +829,7 @@
           </div>
         </div>
         
-        <div class="stat-card-modern">
+        <div class="stat-card-modern" style="cursor: pointer;" onclick="switchTab('services')">
           <div class="stat-icon-wrapper" style="background: var(--success-light); color: var(--success);">
             <i class="fas fa-calendar-check"></i>
           </div>
@@ -839,7 +840,7 @@
           </div>
         </div>
         
-        <div class="stat-card-modern">
+        <div class="stat-card-modern" style="cursor: pointer;" onclick="switchTab('notices')">
           <div class="stat-icon-wrapper" style="background: var(--info-light); color: var(--info);">
             <i class="fas fa-bullhorn"></i>
           </div>
