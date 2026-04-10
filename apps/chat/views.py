@@ -2,7 +2,9 @@ from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db.models import Q
-from .models import ChatRoom, Message
+from django.utils import timezone
+from datetime import timedelta
+from .models import ChatRoom, Message, MessageVisibility
 from .serializers import (
     ChatRoomSerializer, 
     MessageSerializer, 
@@ -101,7 +103,7 @@ class GetChatUsersView(APIView):
 class MessageListView(generics.ListAPIView):
     """
     GET /api/chat/rooms/{room_id}/messages/
-    Get all messages in a chat room.
+    Get all messages in a chat room (excluding hidden and deleted).
     """
     serializer_class = MessageSerializer
     permission_classes = [IsChatUser]
@@ -110,7 +112,6 @@ class MessageListView(generics.ListAPIView):
         room_id = self.kwargs.get('room_id')
         user = self.request.user
         
-        # Validate room access
         try:
             room = ChatRoom.objects.get(
                 Q(resident=user) | Q(committee=user),
@@ -119,13 +120,21 @@ class MessageListView(generics.ListAPIView):
         except ChatRoom.DoesNotExist:
             return Message.objects.none()
         
-        # Mark messages as read
+        hidden_message_ids = set(
+            MessageVisibility.objects.filter(
+                user=user,
+                is_hidden=True
+            ).values_list('message_id', flat=True)
+        )
+        
         Message.objects.filter(
             room=room,
             is_read=False
         ).exclude(sender=user).update(is_read=True)
         
-        return room.messages.all().select_related('sender')
+        return room.messages.exclude(
+            id__in=hidden_message_ids
+        ).select_related('sender')
 
 
 class SendMessageView(generics.CreateAPIView):
@@ -222,18 +231,157 @@ class GetUnreadCountView(APIView):
     def get(self, request):
         user = request.user
         
-        # Get all rooms for user
         rooms = ChatRoom.objects.filter(
             Q(resident=user) | Q(committee=user)
         )
         
-        # Count unread messages
+        hidden_message_ids = set(
+            MessageVisibility.objects.filter(
+                user=user,
+                is_hidden=True
+            ).values_list('message_id', flat=True)
+        )
+        
         unread_count = Message.objects.filter(
             room__in=rooms,
             is_read=False
-        ).exclude(sender=user).count()
+        ).exclude(sender=user).exclude(
+            id__in=hidden_message_ids
+        ).exclude(
+            is_deleted_for_everyone=True
+        ).count()
 
         return Response({
             'success': True,
             'data': {'unread_count': unread_count}
+        })
+
+
+class DeleteMessageForMeView(APIView):
+    """
+    DELETE /api/chat/rooms/{room_id}/messages/{message_id}/delete-for-me/
+    Delete message for current user only (hide from view).
+    """
+    permission_classes = [IsChatUser]
+
+    def post(self, request, room_id, message_id):
+        user = request.user
+        
+        try:
+            room = ChatRoom.objects.get(
+                Q(resident=user) | Q(committee=user),
+                id=room_id
+            )
+        except ChatRoom.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Chat room not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        try:
+            message = Message.objects.get(id=message_id, room=room)
+        except Message.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Message not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        MessageVisibility.objects.get_or_create(
+            user=user,
+            message=message,
+            defaults={'is_hidden': True}
+        )
+
+        return Response({
+            'success': True,
+            'message': 'Message deleted for you'
+        })
+
+
+class DeleteMessageForEveryoneView(APIView):
+    """
+    DELETE /api/chat/rooms/{room_id}/messages/{message_id}/delete-for-everyone/
+    Delete message for everyone (within time limit).
+    """
+    permission_classes = [IsChatUser]
+    DELETE_TIME_LIMIT = timedelta(minutes=10)
+
+    def post(self, request, room_id, message_id):
+        user = request.user
+        now = timezone.now()
+        
+        try:
+            room = ChatRoom.objects.get(
+                Q(resident=user) | Q(committee=user),
+                id=room_id
+            )
+        except ChatRoom.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Chat room not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        try:
+            message = Message.objects.get(id=message_id, room=room, sender=user)
+        except Message.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Message not found or you are not the sender'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        if message.is_deleted_for_everyone:
+            return Response({
+                'success': False,
+                'message': 'Message already deleted'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if now - message.created_at > self.DELETE_TIME_LIMIT:
+            return Response({
+                'success': False,
+                'message': 'Delete time limit expired (10 minutes)'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        message.is_deleted_for_everyone = True
+        message.deleted_at = now
+        message.save()
+
+        return Response({
+            'success': True,
+            'message': 'Message deleted for everyone'
+        })
+
+
+class ClearChatView(APIView):
+    """
+    DELETE /api/chat/rooms/{room_id}/clear/
+    Clear chat history for current user.
+    """
+    permission_classes = [IsChatUser]
+
+    def post(self, request, room_id):
+        user = request.user
+        
+        try:
+            room = ChatRoom.objects.get(
+                Q(resident=user) | Q(committee=user),
+                id=room_id
+            )
+        except ChatRoom.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Chat room not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        message_ids = list(room.messages.values_list('id', flat=True))
+        
+        for msg_id in message_ids:
+            MessageVisibility.objects.get_or_create(
+                user=user,
+                message_id=msg_id,
+                defaults={'is_hidden': True}
+            )
+
+        return Response({
+            'success': True,
+            'message': f'Chat cleared ({len(message_ids)} messages hidden)'
         })

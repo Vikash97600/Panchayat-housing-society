@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ChatRoom, Message
+from .models import ChatRoom, Message, MessageVisibility
 from apps.accounts.serializers import UserProfileSerializer
 
 
@@ -8,18 +8,34 @@ class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.CharField(source='sender.get_full_name', read_only=True)
     sender_role = serializers.CharField(source='sender.role', read_only=True)
     is_me = serializers.SerializerMethodField()
+    is_deleted_for_everyone = serializers.BooleanField(read_only=True)
+    can_delete = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ['id', 'content', 'created_at', 'is_read', 'sender', 'sender_name', 'sender_role', 'is_me']
-        read_only_fields = ['id', 'created_at', 'is_read', 'sender', 'sender_name', 'sender_role']
+        fields = ['id', 'content', 'created_at', 'is_read', 'sender', 'sender_name', 'sender_role', 'is_me', 'is_deleted_for_everyone', 'can_delete']
+        read_only_fields = ['id', 'created_at', 'is_read', 'sender', 'sender_name', 'sender_role', 'is_deleted_for_everyone']
 
     def get_is_me(self, obj):
         """Check if the message is sent by the current user."""
         request = self.context.get('request')
-        if request and request.user:
+        if request and hasattr(request, 'user') and request.user and request.user.is_authenticated:
             return obj.sender.id == request.user.id
         return False
+
+    def get_can_delete(self, obj):
+        """Check if user can delete this message."""
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user and request.user.is_authenticated:
+            return obj.sender.id == request.user.id and not obj.is_deleted_for_everyone
+        return False
+
+    def to_representation(self, instance):
+        """Customize output based on message state."""
+        data = super().to_representation(instance)
+        if instance.is_deleted_for_everyone:
+            data['content'] = 'This message was deleted'
+        return data
 
 
 class ChatRoomSerializer(serializers.ModelSerializer):
@@ -42,23 +58,61 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def get_last_message(self, obj):
-        """Get the last message in the room."""
-        last_msg = obj.messages.last()
-        if last_msg:
-            return MessageSerializer(last_msg, context=self.context).data
+        """Get the last message in the room (excluding hidden and deleted)."""
+        request = self.context.get('request')
+        user = request.user if request and hasattr(request, 'user') else None
+        
+        visible_message_ids = set()
+        if user and user.is_authenticated:
+            hidden_ids = list(
+                MessageVisibility.objects.filter(
+                    user=user,
+                    is_hidden=True
+                ).values_list('message_id', flat=True)
+            )
+            visible_message_ids = set(hidden_ids)
+        
+        messages = obj.messages.exclude(
+            id__in=visible_message_ids
+        ).exclude(
+            is_deleted_for_everyone=True
+        ).order_by('-created_at')[:1]
+        
+        for msg in messages:
+            data = MessageSerializer(msg, context=self.context).data
+            return data
         return None
 
     def get_unread_count(self, obj):
-        """Get count of unread messages for current user."""
+        """Get count of unread messages for current user (excluding hidden)."""
         request = self.context.get('request')
-        if request and request.user:
-            return obj.messages.filter(is_read=False).exclude(sender=request.user).count()
-        return 0
+        user = request.user if request and hasattr(request, 'user') else None
+        
+        hidden_message_ids = set()
+        if user and user.is_authenticated:
+            hidden_ids = set(
+                MessageVisibility.objects.filter(
+                    user=user,
+                    is_hidden=True
+                ).values_list('message_id', flat=True)
+            )
+        
+        unread = obj.messages.filter(
+            is_read=False
+        ).exclude(
+            sender=user
+        ).exclude(
+            id__in=hidden_message_ids
+        ).exclude(
+            is_deleted_for_everyone=True
+        )
+        
+        return unread.count() if user and user.is_authenticated else 0
 
     def get_other_user(self, obj):
         """Get the other participant in the chat."""
         request = self.context.get('request')
-        if request and request.user:
+        if request and hasattr(request, 'user') and request.user and request.user.is_authenticated:
             other = obj.get_other_user(request.user)
             if other:
                 return {

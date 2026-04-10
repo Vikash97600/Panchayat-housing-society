@@ -56,6 +56,8 @@ class Message(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    is_deleted_for_everyone = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = 'chat_messages'
@@ -63,3 +65,59 @@ class Message(models.Model):
 
     def __str__(self):
         return f"Message by {self.sender.email} at {self.created_at}"
+
+    @property
+    def display_content(self):
+        """Return display content, hiding if deleted for everyone."""
+        if self.is_deleted_for_everyone:
+            return "This message was deleted"
+        return self.content
+
+
+class MessageVisibility(models.Model):
+    """
+    Track which messages are hidden for specific users.
+    Supports "Delete for Me" and "Clear Chat" features.
+    """
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='hidden_messages'
+    )
+    message = models.ForeignKey(
+        Message,
+        on_delete=models.CASCADE,
+        related_name='visibility_entries'
+    )
+    is_hidden = models.BooleanField(default=True)
+    hidden_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'message_visibility'
+        unique_together = ('user', 'message')
+        indexes = [
+            models.Index(fields=['user', 'message']),
+        ]
+
+    def __str__(self):
+        return f"Hidden: {self.user.email} - Message {self.message_id}"
+
+
+class UserOnlineStatus(models.Model):
+    """
+    Track online/offline status of users.
+    """
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='online_status'
+    )
+    is_online = models.BooleanField(default=False)
+    last_seen = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'user_online_status'
+
+    def __str__(self):
+        return f"{self.user.email} - {'Online' if self.is_online else 'Offline'}"
