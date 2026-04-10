@@ -1,7 +1,7 @@
 <!-- ## 📄 Documentation
 
 [View Full Documentation](panchayat_documentation.html) -->
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/github/license/Vikash97600/Panchayat-society-app)](LICENSE)
 
 # 🏘️ Panchayat — Housing Society Management System
 
