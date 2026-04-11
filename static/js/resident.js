@@ -1299,9 +1299,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // If profile tab is already active on initial load, refresh it immediately
   const activeTabLink = document.querySelector('.sidebar .nav-link.active');
-  const activeTab = activeTabLink?.dataset?.tab || document.getElementById('tab-profile')?.classList.contains('active') && 'profile';
+  const activeTab = activeTabLink?.dataset?.tab || (document.getElementById('tab-profile')?.classList.contains('active') ? 'profile' : (document.getElementById('tab-chat')?.classList.contains('active') ? 'chat' : null));
   if (activeTab === 'profile') {
     loadProfile();
+  }
+  if (activeTab === 'chat' && typeof initChat === 'function') {
+    initChat();
   }
 });
 

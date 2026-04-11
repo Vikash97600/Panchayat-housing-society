@@ -1316,14 +1316,14 @@
       <div class="chat-container" style="display: flex; gap: 20px; height: calc(100vh - 200px);">
         <!-- Chat Rooms List -->
         <div class="chat-rooms-list" style="width: 300px; min-width: 280px;">
-          <div class="card" style="height: 100%;">
+          <div class="card" style="height: 100%; display: flex; flex-direction: column;">
             <div class="card-header">
               <h5 class="mb-0">Conversations</h5>
-              <button class="btn btn-sm btn-primary mt-2" onclick="openNewChatModal()">
+              <button type="button" class="btn btn-sm btn-primary mt-2 w-100" onclick="window.openNewChatModal()">
                 <i class="fas fa-plus"></i> New Chat
               </button>
             </div>
-            <div class="card-body p-0" id="chat-rooms-container" style="overflow-y: auto;">
+            <div class="card-body p-0 flex-grow-1" id="chat-rooms-container" style="overflow-y: auto;">
               <div class="text-center text-muted py-4" id="chat-rooms-loading">
                 <div class="spinner-border spinner-border-sm"></div>
                 <p class="mt-2">Loading...</p>
@@ -1334,26 +1334,41 @@
         </div>
         
         <!-- Chat Window -->
-        <div class="chat-window" style="flex: 1;">
-          <div class="card" style="height: 100%;">
+        <div class="chat-window" style="flex: 1; display: flex; flex-direction: column;">
+          <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+            <!-- Chat Header with Status -->
             <div class="card-header d-flex justify-content-between align-items-center" id="chat-header">
-              <h5 class="mb-0" id="chat-with-name">Select a conversation</h5>
-              <span class="text-muted" id="chat-with-role"></span>
+              <div>
+                <h5 class="mb-0 d-inline" id="chat-with-name">Select a conversation</h5>
+                <span class="text-muted ms-2" id="chat-with-role"></span>
+                <div id="chat-user-status" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;"></div>
+              </div>
+              <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-danger" onclick="window.clearChat()" title="Clear chat for you">
+                  <i class="fas fa-trash"></i> Clear
+                </button>
+              </div>
             </div>
-            <div class="card-body chat-messages-container" id="chat-messages" style="height: calc(100% - 130px); overflow-y: auto;">
+            
+            <!-- Messages Container -->
+            <div class="card-body flex-grow-1 chat-messages-container" id="chat-messages" style="overflow-y: auto; position: relative;">
               <div class="text-center text-muted py-5" id="chat-empty">
                 <i class="fas fa-comments fa-3x mb-3"></i>
                 <p>Select a conversation or start a new one</p>
               </div>
               <div id="chat-messages-list"></div>
             </div>
+            
+            <!-- Message Input -->
             <div class="card-footer">
               <div class="input-group">
-                <input type="text" class="form-control" id="message-input" placeholder="Type a message..." onkeypress="handleMessageKeyPress(event)">
-                <button class="btn btn-primary" onclick="sendMessage()">
+                <input type="text" class="form-control" id="message-input" placeholder="Type a message..." 
+                       onkeypress="window.handleMessageKeyPress(event)" autocomplete="off">
+                <button class="btn btn-primary" onclick="window.sendMessage()" title="Send message (Enter)">
                   <i class="fas fa-paper-plane"></i>
                 </button>
               </div>
+              <small class="text-muted d-block mt-2">Press Enter to send, Shift+Enter for new line</small>
             </div>
           </div>
         </div>

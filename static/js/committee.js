@@ -1086,9 +1086,12 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const activeTabLink = document.querySelector('.sidebar .nav-link.active');
-  const activeTab = activeTabLink?.dataset?.tab || (document.getElementById('tab-profile')?.classList.contains('active') ? 'profile' : null);
+  const activeTab = activeTabLink?.dataset?.tab || (document.getElementById('tab-profile')?.classList.contains('active') ? 'profile' : (document.getElementById('tab-chat')?.classList.contains('active') ? 'chat' : null));
   if (activeTab === 'profile') {
     loadProfile();
+  }
+  if (activeTab === 'chat' && typeof initChat === 'function') {
+    initChat();
   }
 });
 

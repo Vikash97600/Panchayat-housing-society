@@ -9,7 +9,8 @@ from .views import (
     GetUnreadCountView,
     DeleteMessageForMeView,
     DeleteMessageForEveryoneView,
-    ClearChatView
+    ClearChatView,
+    GetUserOnlineStatusView
 )
 
 urlpatterns = [
@@ -27,6 +28,7 @@ urlpatterns = [
     
     # Users
     path('users/', GetChatUsersView.as_view(), name='chat-users'),
+    path('users/<int:user_id>/status/', GetUserOnlineStatusView.as_view(), name='user-status'),
     
     # Unread count
     path('unread-count/', GetUnreadCountView.as_view(), name='unread-count'),

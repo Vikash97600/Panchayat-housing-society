@@ -934,7 +934,7 @@
           <div class="card" style="height: 100%;">
             <div class="card-header">
               <h5 class="mb-0">Conversations</h5>
-              <button class="btn btn-sm btn-primary mt-2" onclick="openNewChatModal()">
+              <button type="button" class="btn btn-sm btn-primary mt-2" onclick="window.openNewChatModal()">
                 <i class="fas fa-plus"></i> New Chat
               </button>
             </div>
@@ -952,8 +952,11 @@
         <div class="chat-window" style="flex: 1;">
           <div class="card" style="height: 100%;">
             <div class="card-header d-flex justify-content-between align-items-center" id="chat-header">
-              <h5 class="mb-0" id="chat-with-name">Select a conversation</h5>
-              <span class="text-muted" id="chat-with-role"></span>
+              <div>
+                <h5 class="mb-0" id="chat-with-name">Select a conversation</h5>
+                <span class="text-muted" id="chat-with-role"></span>
+                <div id="chat-user-status" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;"></div>
+              </div>
             </div>
             <div class="card-body chat-messages-container" id="chat-messages" style="height: calc(100% - 130px); overflow-y: auto;">
               <div class="text-center text-muted py-5" id="chat-empty">

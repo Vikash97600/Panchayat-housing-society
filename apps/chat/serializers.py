@@ -4,8 +4,9 @@ from apps.accounts.serializers import UserProfileSerializer
 
 
 class MessageSerializer(serializers.ModelSerializer):
-    """Serializer for chat messages."""
+    """Serializer for chat messages with visibility filtering."""
     sender_name = serializers.CharField(source='sender.get_full_name', read_only=True)
+    sender_email = serializers.CharField(source='sender.email', read_only=True)
     sender_role = serializers.CharField(source='sender.role', read_only=True)
     is_me = serializers.SerializerMethodField()
     is_deleted_for_everyone = serializers.BooleanField(read_only=True)
@@ -13,8 +14,16 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Message
-        fields = ['id', 'content', 'created_at', 'is_read', 'sender', 'sender_name', 'sender_role', 'is_me', 'is_deleted_for_everyone', 'can_delete']
-        read_only_fields = ['id', 'created_at', 'is_read', 'sender', 'sender_name', 'sender_role', 'is_deleted_for_everyone']
+        fields = [
+            'id', 'content', 'created_at', 'is_read', 'sender',
+            'sender_name', 'sender_email', 'sender_role', 'is_me',
+            'is_deleted_for_everyone', 'can_delete'
+        ]
+        read_only_fields = [
+            'id', 'created_at', 'is_read', 'sender',
+            'sender_name', 'sender_email', 'sender_role',
+            'is_deleted_for_everyone'
+        ]
 
     def get_is_me(self, obj):
         """Check if the message is sent by the current user."""
@@ -24,7 +33,7 @@ class MessageSerializer(serializers.ModelSerializer):
         return False
 
     def get_can_delete(self, obj):
-        """Check if user can delete this message."""
+        """Check if user can delete this message (only sender, not deleted)."""
         request = self.context.get('request')
         if request and hasattr(request, 'user') and request.user and request.user.is_authenticated:
             return obj.sender.id == request.user.id and not obj.is_deleted_for_everyone
@@ -39,7 +48,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class ChatRoomSerializer(serializers.ModelSerializer):
-    """Serializer for chat rooms."""
+    """Serializer for chat rooms with message and unread count."""
     resident_name = serializers.CharField(source='resident.get_full_name', read_only=True)
     committee_name = serializers.CharField(source='committee.get_full_name', read_only=True)
     resident_info = UserProfileSerializer(source='resident', read_only=True)
@@ -58,22 +67,24 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def get_last_message(self, obj):
-        """Get the last message in the room (excluding hidden and deleted)."""
+        """Get the last visible message in the room."""
         request = self.context.get('request')
         user = request.user if request and hasattr(request, 'user') else None
         
-        visible_message_ids = set()
-        if user and user.is_authenticated:
-            hidden_ids = list(
-                MessageVisibility.objects.filter(
-                    user=user,
-                    is_hidden=True
-                ).values_list('message_id', flat=True)
-            )
-            visible_message_ids = set(hidden_ids)
+        if not user or not user.is_authenticated:
+            return None
         
+        # Get hidden message IDs for this user
+        hidden_ids = set(
+            MessageVisibility.objects.filter(
+                user=user,
+                is_hidden=True
+            ).values_list('message_id', flat=True)
+        )
+        
+        # Get last non-hidden, non-deleted message
         messages = obj.messages.exclude(
-            id__in=visible_message_ids
+            id__in=hidden_ids
         ).exclude(
             is_deleted_for_everyone=True
         ).order_by('-created_at')[:1]
@@ -84,42 +95,46 @@ class ChatRoomSerializer(serializers.ModelSerializer):
         return None
 
     def get_unread_count(self, obj):
-        """Get count of unread messages for current user (excluding hidden)."""
+        """Get count of unread messages for current user."""
         request = self.context.get('request')
         user = request.user if request and hasattr(request, 'user') else None
         
-        hidden_message_ids = set()
-        if user and user.is_authenticated:
-            hidden_ids = set(
-                MessageVisibility.objects.filter(
-                    user=user,
-                    is_hidden=True
-                ).values_list('message_id', flat=True)
-            )
+        if not user or not user.is_authenticated:
+            return 0
         
+        # Get hidden message IDs
+        hidden_ids = set(
+            MessageVisibility.objects.filter(
+                user=user,
+                is_hidden=True
+            ).values_list('message_id', flat=True)
+        )
+        
+        # Count unread, non-hidden, non-deleted messages from others
         unread = obj.messages.filter(
             is_read=False
         ).exclude(
             sender=user
         ).exclude(
-            id__in=hidden_message_ids
+            id__in=hidden_ids
         ).exclude(
             is_deleted_for_everyone=True
         )
         
-        return unread.count() if user and user.is_authenticated else 0
+        return unread.count()
 
     def get_other_user(self, obj):
-        """Get the other participant in the chat."""
+        """Get serialized data for the other participant."""
         request = self.context.get('request')
         if request and hasattr(request, 'user') and request.user and request.user.is_authenticated:
             other = obj.get_other_user(request.user)
             if other:
                 return {
                     'id': other.id,
-                    'name': other.get_full_name(),
+                    'name': other.get_full_name() or other.email,
                     'role': other.role,
-                    'email': other.email
+                    'email': other.email,
+                    'avatar': other.profile_picture.url if hasattr(other, 'profile_picture') and other.profile_picture else None
                 }
         return None
 
@@ -132,7 +147,7 @@ class CreateMessageSerializer(serializers.ModelSerializer):
         fields = ['content']
 
     def validate_content(self, value):
-        """Validate message content."""
+        """Validate message content is not empty and not too long."""
         if not value or not value.strip():
             raise serializers.ValidationError("Message content cannot be empty")
         if len(value) > 2000:
@@ -141,7 +156,7 @@ class CreateMessageSerializer(serializers.ModelSerializer):
 
 
 class CreateChatRoomSerializer(serializers.ModelSerializer):
-    """Serializer for creating chat rooms."""
+    """Serializer for creating chat rooms with another user."""
     other_user_id = serializers.IntegerField(write_only=True)
 
     class Meta:
@@ -149,14 +164,13 @@ class CreateChatRoomSerializer(serializers.ModelSerializer):
         fields = ['other_user_id']
 
     def validate_other_user_id(self, value):
-        """Validate the other user exists and is of appropriate role."""
+        """Validate the other user exists and role is compatible."""
         from apps.accounts.models import CustomUser
-        from django.core.exceptions import ValidationError
         
         try:
             user = CustomUser.objects.get(id=value, is_active=True)
         except CustomUser.DoesNotExist:
-            raise serializers.ValidationError("User not found")
+            raise serializers.ValidationError("User not found or inactive")
         
         request = self.context.get('request')
         if not request:
@@ -164,12 +178,15 @@ class CreateChatRoomSerializer(serializers.ModelSerializer):
         
         current_user = request.user
         
-        # Validate role combination
-        if current_user.role == 'resident' and user.role != 'committee':
+        # Validate role combination - allow resident <-> committee chat
+        if current_user.role == 'resident' and user.role not in ['committee']:
             raise serializers.ValidationError("Residents can only chat with committee members")
         
-        if current_user.role == 'committee' and user.role != 'resident':
+        if current_user.role == 'committee' and user.role not in ['resident']:
             raise serializers.ValidationError("Committee members can only chat with residents")
+        
+        if current_user.role == 'admin':
+            raise serializers.ValidationError("Admins cannot chat")
         
         return value
 
@@ -188,7 +205,7 @@ class CreateChatRoomSerializer(serializers.ModelSerializer):
             resident = other_user
             committee = current_user
         
-        # Check if room already exists
+        # Check if room already exists, create if not
         room, created = ChatRoom.objects.get_or_create(
             resident=resident,
             committee=committee

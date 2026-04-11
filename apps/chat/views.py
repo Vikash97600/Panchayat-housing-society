@@ -71,27 +71,18 @@ class GetChatUsersView(APIView):
         
         user = request.user
         
-        if user.role == 'resident':
-            # Get committee members in the same society
-            users = CustomUser.objects.filter(
-                role='committee',
-                society=user.society,
-                is_active=True,
-                is_approved=True
-            )
-        elif user.role == 'committee':
-            # Get residents in the same society
-            users = CustomUser.objects.filter(
-                role='resident',
-                society=user.society,
-                is_active=True,
-                is_approved=True
-            )
-        else:
+        if not user.society:
             return Response({
                 'success': False,
-                'message': 'Invalid user role'
+                'message': 'User has no society assigned'
             }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get both committee members and residents in the same society
+        users = CustomUser.objects.filter(
+            society=user.society,
+            is_active=True,
+            is_approved=True
+        ).exclude(id=user.id)
         
         serializer = UserProfileSerializer(users, many=True)
         return Response({
@@ -385,3 +376,45 @@ class ClearChatView(APIView):
             'success': True,
             'message': f'Chat cleared ({len(message_ids)} messages hidden)'
         })
+
+
+class GetUserOnlineStatusView(APIView):
+    """
+    GET /api/chat/users/{user_id}/status/
+    Get online status of a specific user.
+    """
+    permission_classes = [IsChatUser]
+
+    def get(self, request, user_id):
+        from apps.accounts.models import CustomUser
+        from .models import UserOnlineStatus
+        
+        try:
+            user = CustomUser.objects.get(id=user_id, is_active=True)
+        except CustomUser.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'User not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        try:
+            status_obj = UserOnlineStatus.objects.get(user=user)
+            return Response({
+                'success': True,
+                'data': {
+                    'user_id': user.id,
+                    'is_online': status_obj.is_online,
+                    'last_seen': status_obj.last_seen.isoformat() if status_obj.last_seen else None,
+                    'updated_at': status_obj.updated_at.isoformat()
+                }
+            })
+        except UserOnlineStatus.DoesNotExist:
+            return Response({
+                'success': True,
+                'data': {
+                    'user_id': user.id,
+                    'is_online': False,
+                    'last_seen': None,
+                    'updated_at': None
+                }
+            })

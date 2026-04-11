@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from apps.accounts.models import CustomUser
 
 
@@ -26,6 +27,10 @@ class ChatRoom(models.Model):
         db_table = 'chat_rooms'
         unique_together = ('resident', 'committee')
         ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['resident', 'committee']),
+            models.Index(fields=['-updated_at']),
+        ]
 
     def __str__(self):
         return f"Chat: {self.resident.email} ↔ {self.committee.email}"
@@ -37,6 +42,27 @@ class ChatRoom(models.Model):
         elif user == self.committee:
             return self.resident
         return None
+
+    def get_last_message(self):
+        """Get the last non-deleted message in room."""
+        return self.messages.filter(
+            is_deleted_for_everyone=False
+        ).order_by('-created_at').first()
+
+    def get_unread_count(self, user):
+        """Get count of unread messages for a specific user."""
+        hidden_ids = MessageVisibility.objects.filter(
+            user=user,
+            is_hidden=True
+        ).values_list('message_id', flat=True)
+        
+        return self.messages.filter(
+            is_read=False
+        ).exclude(sender=user).exclude(
+            id__in=hidden_ids
+        ).exclude(
+            is_deleted_for_everyone=True
+        ).count()
 
 
 class Message(models.Model):
@@ -62,6 +88,11 @@ class Message(models.Model):
     class Meta:
         db_table = 'chat_messages'
         ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['room', 'created_at']),
+            models.Index(fields=['room', 'is_read']),
+            models.Index(fields=['is_deleted_for_everyone']),
+        ]
 
     def __str__(self):
         return f"Message by {self.sender.email} at {self.created_at}"
@@ -72,6 +103,19 @@ class Message(models.Model):
         if self.is_deleted_for_everyone:
             return "This message was deleted"
         return self.content
+
+    def is_visible_to(self, user):
+        """Check if message is visible to a specific user."""
+        if self.is_deleted_for_everyone:
+            return False
+        
+        hidden = MessageVisibility.objects.filter(
+            user=user,
+            message=self,
+            is_hidden=True
+        ).exists()
+        
+        return not hidden
 
 
 class MessageVisibility(models.Model):
@@ -96,6 +140,7 @@ class MessageVisibility(models.Model):
         db_table = 'message_visibility'
         unique_together = ('user', 'message')
         indexes = [
+            models.Index(fields=['user', 'is_hidden']),
             models.Index(fields=['user', 'message']),
         ]
 
@@ -106,6 +151,7 @@ class MessageVisibility(models.Model):
 class UserOnlineStatus(models.Model):
     """
     Track online/offline status of users.
+    Used for real-time presence indicators.
     """
     user = models.OneToOneField(
         CustomUser,
@@ -118,6 +164,25 @@ class UserOnlineStatus(models.Model):
 
     class Meta:
         db_table = 'user_online_status'
+        indexes = [
+            models.Index(fields=['is_online']),
+        ]
 
     def __str__(self):
-        return f"{self.user.email} - {'Online' if self.is_online else 'Offline'}"
+        status_text = 'Online' if self.is_online else 'Offline'
+        return f"{self.user.email} - {status_text}"
+    
+    def mark_online(self):
+        """Mark user as online."""
+        self.is_online = True
+        self.updated_at = timezone.now()
+        self.save(update_fields=['is_online', 'updated_at'])
+    
+    def mark_offline(self):
+        """Mark user as offline and record last seen time."""
+        self.is_online = False
+        self.last_seen = timezone.now()
+        self.updated_at = timezone.now()
+        self.save(update_fields=['is_online', 'last_seen', 'updated_at'])
+
+
