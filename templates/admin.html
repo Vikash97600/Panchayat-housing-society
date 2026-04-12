@@ -471,6 +471,229 @@
       grid-template-columns: 1fr;
     }
   }
+
+  /* Governance Admin Enhancements */
+  .gov-admin .sidebar-admin {
+    background: #1a2744 !important;
+  }
+  
+  .gov-admin .sidebar-admin .sidebar-header {
+    background: linear-gradient(135deg, #1a2744 0%, #2d3e5c 100%);
+    border-bottom: 3px solid #F9A825;
+  }
+  
+  .gov-admin .sidebar-admin .nav-link.active {
+    background: #F9A825 !important;
+    color: #1a2744 !important;
+    font-weight: 600;
+  }
+  
+  .gov-admin .sidebar-admin .nav-link:hover {
+    background: rgba(249, 168, 37, 0.15);
+    border-left: 3px solid #F9A825;
+  }
+  
+  .gov-admin .main-header {
+    background: #ffffff;
+    border-bottom: 2px solid #1a2744;
+    padding: 8px 24px;
+  }
+  
+  .gov-admin .stats-grid {
+    gap: 16px;
+  }
+  
+  .gov-admin .stat-card {
+    border: 1px solid #e5e4df;
+    border-left-width: 4px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(26, 39, 68, 0.1);
+    padding: 16px;
+  }
+  
+  .gov-admin .stat-card .stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1a2744;
+  }
+  
+  .gov-admin .stat-card .stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+  }
+  
+  .gov-admin .stat-card.primary { border-left-color: #1a2744; }
+  .gov-admin .stat-card.success { border-left-color: #2E7D32; }
+  .gov-admin .stat-card.warning { border-left-color: #F9A825; }
+  .gov-admin .stat-card.danger { border-left-color: #C62828; }
+  
+  .gov-admin .card {
+    border: 1px solid #e5e4df;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(26, 39, 68, 0.08);
+  }
+  
+  .gov-admin .card-header {
+    background: #ebeae5;
+    border-bottom: 1px solid #c9c8c3;
+    padding: 12px 16px;
+  }
+  
+  .gov-admin .card-header h5 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #1a2744;
+  }
+  
+  .gov-admin .table {
+    font-size: 0.875rem;
+    margin-bottom: 0;
+  }
+  
+  .gov-admin .table thead th {
+    background: #ebeae5;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    color: #1a2744;
+    border-bottom: 2px solid #c9c8c3;
+    padding: 10px 12px;
+  }
+  
+  .gov-admin .table td {
+    padding: 10px 12px;
+    vertical-align: middle;
+    border-color: #e5e4df;
+  }
+  
+  .gov-admin .table tbody tr:hover {
+    background: #f5f4f0;
+  }
+  
+  .gov-admin .table-responsive {
+    border-radius: 0;
+  }
+  
+  .gov-admin .filter-bar {
+    background: #ffffff;
+    border: 1px solid #e5e4df;
+    border-radius: 4px;
+    padding: 12px 16px;
+    gap: 12px;
+  }
+  
+  .gov-admin .filter-bar .form-select,
+  .gov-admin .filter-bar .form-control {
+    border: 1px solid #c9c8c3;
+    border-radius: 4px;
+    font-size: 0.875rem;
+  }
+  
+  .gov-admin .page-header {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e5e4df;
+  }
+  
+  .gov-admin .page-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1a2744;
+  }
+  
+  .gov-admin .btn-primary {
+    background: #1a2744;
+    border-color: #1a2744;
+    font-size: 0.875rem;
+    padding: 8px 16px;
+    border-radius: 4px;
+  }
+  
+  .gov-admin .btn-primary:hover {
+    background: #2d3e5c;
+    border-color: #2d3e5c;
+  }
+  
+  .gov-admin .btn-outline-secondary {
+    border-color: #c9c8c3;
+    color: #3d4a5c;
+    font-size: 0.875rem;
+  }
+  
+  .gov-admin .btn-outline-secondary:hover {
+    background: #ebeae5;
+    border-color: #1a2744;
+    color: #1a2744;
+  }
+  
+  /* Status badges */
+  .gov-admin .status-badge {
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  
+  .gov-admin .status-badge.approved,
+  .gov-admin .status-badge.active {
+    background: #e8f5e9;
+    color: #2E7D32;
+  }
+  
+  .gov-admin .status-badge.pending,
+  .gov-admin .status-badge.inactive {
+    background: #fff8e1;
+    color: #F9A825;
+  }
+  
+  .gov-admin .status-badge.rejected,
+  .gov-admin .status-badge.urgent {
+    background: #ffebee;
+    color: #C62828;
+  }
+  
+  .gov-admin .status-badge.archived {
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+  
+  /* Compact spacing */
+  .gov-admin .tab-content {
+    padding: 16px;
+  }
+  
+  /* Mobile responsive */
+  @media (max-width: 768px) {
+    .gov-admin .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    
+    .gov-admin .stat-card {
+      padding: 12px;
+    }
+    
+    .gov-admin .stat-card .stat-value {
+      font-size: 1.5rem;
+    }
+    
+    .gov-admin .header-actions {
+      display: none;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .gov-admin .stats-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
 {% endblock %}
 
@@ -584,6 +807,9 @@
             </button>
             <button class="theme-option" data-theme="gov" onclick="setTheme('gov')">
               <span class="theme-dot gov"></span> Govt
+            </button>
+            <button class="theme-option" data-theme="gov-admin" onclick="setTheme('gov-admin')">
+              <span class="theme-dot gov" style="background: linear-gradient(135deg, #1a2744, #F9A825);"></span> Admin
             </button>
             <button class="theme-option" data-theme="neon" onclick="setTheme('neon')">
               <span class="theme-dot neon"></span> Neon
@@ -1303,6 +1529,9 @@
 <script src="/static/js/admin.js"></script>
 
 <script>
+  // Force governance theme on admin page
+  document.documentElement.setAttribute('data-theme', 'gov-admin');
+  
   // Set current date
   document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-IN', { 
     weekday: 'long', 

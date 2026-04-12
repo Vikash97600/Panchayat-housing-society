@@ -438,6 +438,189 @@
    THEME 6: EARTHY / VILLAGE
    ============================================== */
 [data-theme="earth"] {
+
+/* ==============================================
+   THEME 7: GOVERNANCE (Admin Dashboard)
+   Deep Navy / Cream / Saffron
+   ============================================== */
+[data-theme="gov-admin"] {
+  /* Brand Colors - Deep Navy */
+  --brand-primary: #1a2744;
+  --brand-secondary: #2d3e5c;
+  --brand-dark: #0f1829;
+  --brand-light: #d1d9e8;
+  --brand-ultra-light: #e8ecf3;
+
+  /* Semantic - Governance */
+  --success: #2E7D32;
+  --success-light: #e8f5e9;
+  --warning: #F9A825;
+  --warning-light: #fff8e1;
+  --danger: #C62828;
+  --danger-light: #ffebee;
+  --info: #1565C0;
+  --info-light: #e3f2fd;
+
+  /* Background - Cream */
+  --bg-primary: #F5F4F0;
+  --bg-secondary: #ebeae5;
+  --bg-light: #e5e4df;
+  --bg-offset: #dcdbb5;
+  --text-primary: #1a2744;
+  --text-secondary: #3d4a5c;
+  --text-muted: #6b7280;
+  --text-inverse: #ffffff;
+
+  /* Legacy */
+  --dark: #1a2744;
+  --dark-secondary: #3d4a5c;
+  --gray: #6b7280;
+  --gray-light: #9ca3af;
+  --bg-white: #ffffff;
+
+  /* Borders */
+  --border: #c9c8c3;
+  --border-light: #e5e4df;
+  --border-focus: #1a2744;
+
+  /* Card & Surface */
+  --card-bg: #ffffff;
+  --card-border: #e5e4df;
+  --surface-elevated: #ffffff;
+
+  /* Sidebar - Dark Navy */
+  --sidebar-bg: #1a2744;
+  --sidebar-border: #0f1829;
+  --sidebar-text: #ffffff;
+  --sidebar-text-muted: #a3b5c8;
+  --sidebar-hover: #2d3e5c;
+  --sidebar-active: #F9A825;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #1a2744, #2d3e5c);
+  --gradient-success: linear-gradient(135deg, #2E7D32, #1b5e20);
+  --gradient-bg: linear-gradient(135deg, #F5F4F0 0%, #ebeae5 50%, #e5e4df 100%);
+  --gradient-card: linear-gradient(180deg, #ffffff 0%, #fafaf9 100%);
+
+  /* Shadows - Minimal for governance */
+  --shadow-xs: 0 1px 2px rgba(26, 39, 68, 0.05);
+  --shadow-sm: 0 1px 3px rgba(26, 39, 68, 0.08);
+  --shadow-md: 0 2px 6px rgba(26, 39, 68, 0.1);
+  --shadow-lg: 0 4px 12px rgba(26, 39, 68, 0.12);
+  --shadow-xl: 0 8px 24px rgba(26, 39, 68, 0.15);
+  --shadow-glow: 0 0 15px rgba(26, 39, 68, 0.15);
+  --shadow-glow-success: 0 0 15px rgba(46, 125, 50, 0.15);
+
+  /* Overlay */
+  --overlay-bg: rgba(26, 39, 68, 0.6);
+  --overlay-light: rgba(245, 244, 240, 0.9);
+
+  /* Status */
+  --status-online: #2E7D32;
+  --status-offline: #9ca3af;
+  --status-busy: #C62828;
+  --status-away: #F9A825;
+
+  /* Accent - Saffron */
+  --accent: #F9A825;
+  --accent-hover: #f57f17;
+}
+
+[data-theme="gov-admin"] {
+  /* Bootstrap 5 Override Variables */
+  --bs-primary: #1a2744;
+  --bs-warning: #F9A825;
+  --bs-success: #2E7D32;
+  --bs-danger: #C62828;
+  --bs-body-bg: #F5F4F0;
+  --bs-body-color: #1a2744;
+  --bs-border-color: #c9c8c3;
+}
+
+[data-theme="gov-admin"] .btn-primary {
+  background: #1a2744;
+  border-color: #1a2744;
+}
+
+[data-theme="gov-admin"] .btn-primary:hover {
+  background: #2d3e5c;
+  border-color: #2d3e5c;
+}
+
+[data-theme="gov-admin"] .page-wrapper {
+  background: #F5F4F0;
+}
+
+[data-theme="gov-admin"] .card {
+  border: 1px solid #e5e4df;
+  box-shadow: 0 1px 3px rgba(26, 39, 68, 0.08);
+}
+
+[data-theme="gov-admin"] .table {
+  font-size: 0.875rem;
+}
+
+[data-theme="gov-admin"] .table thead th {
+  background: #ebeae5;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+}
+
+[data-theme="gov-admin"] .sidebar-admin {
+  background: #1a2744 !important;
+}
+
+[data-theme="gov-admin"] .sidebar-admin .nav-link.active {
+  background: #F9A825 !important;
+  color: #1a2744 !important;
+}
+
+[data-theme="gov-admin"] .main-header {
+  background: #ffffff;
+  border-bottom: 2px solid #1a2744;
+}
+
+[data-theme="gov-admin"] .stat-card {
+  border-left: 4px solid;
+}
+
+[data-theme="gov-admin"] .stat-card.primary {
+  border-left-color: #1a2744;
+}
+
+[data-theme="gov-admin"] .stat-card.success {
+  border-left-color: #2E7D32;
+}
+
+[data-theme="gov-admin"] .stat-card.warning {
+  border-left-color: #F9A825;
+}
+
+[data-theme="gov-admin"] .stat-card.danger {
+  border-left-color: #C62828;
+}
+
+[data-theme="gov-admin"] .badge-status-approved {
+  background: #2E7D32;
+  color: white;
+}
+
+[data-theme="gov-admin"] .badge-status-pending {
+  background: #F9A825;
+  color: #1a2744;
+}
+
+[data-theme="gov-admin"] .badge-status-rejected {
+  background: #C62828;
+  color: white;
+}
+
+[data-theme="gov-admin"] .badge-status-archived {
+  background: #6b7280;
+  color: white;
+}
   /* Brand Colors */
   --brand-primary: #92400e;
   --brand-secondary: #b45309;

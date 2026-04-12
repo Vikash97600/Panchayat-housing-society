@@ -9,6 +9,7 @@ const themes = {
   dark: { name: 'Dark', icon: 'fa-moon' },
   green: { name: 'Green', icon: 'fa-leaf' },
   gov: { name: 'Government', icon: 'fa-flag' },
+  'gov-admin': { name: 'Admin Governance', icon: 'fa-landmark' },
   neon: { name: 'Neon', icon: 'fa-bolt' },
   earth: { name: 'Earthy', icon: 'fa-seedling' }
 };
@@ -37,7 +38,11 @@ function applyTheme(themeName) {
 
 // Initialize theme on page load
 function initTheme() {
-  const theme = getSavedTheme();
+  let theme = getSavedTheme();
+  // Auto-apply gov-admin theme on admin page
+  if (window.location.pathname.includes('admin') || document.querySelector('.sidebar-admin')) {
+    theme = 'gov-admin';
+  }
   applyTheme(theme);
 }
 
