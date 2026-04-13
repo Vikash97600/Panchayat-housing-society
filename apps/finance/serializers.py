@@ -24,17 +24,23 @@ class MaintenanceLedgerCreateSerializer(serializers.ModelSerializer):
 
 
 class DueSerializer(serializers.ModelSerializer):
-    resident_name = serializers.CharField(source='resident.full_name', read_only=True)
+    resident_name = serializers.SerializerMethodField()
+    flat_no = serializers.CharField(source='resident.flat_no', read_only=True)
     flat_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Due
-        fields = ['id', 'resident', 'resident_name', 'flat_info', 'society', 'month', 
+        fields = ['id', 'resident', 'resident_name', 'flat_no', 'flat_info', 'society', 'month', 
                   'amount', 'is_paid', 'paid_at', 'payment_ref']
         read_only_fields = ['paid_at']
 
+    def get_resident_name(self, obj):
+        if obj.resident:
+            return obj.resident.get_full_name() or obj.resident.email
+        return 'Unknown'
+
     def get_flat_info(self, obj):
-        if obj.resident.flat_no and obj.resident.wing:
+        if obj.resident and obj.resident.flat_no and obj.resident.wing:
             return f"Flat {obj.resident.flat_no}, Wing {obj.resident.wing}"
         return None
 

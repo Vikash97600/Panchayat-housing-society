@@ -277,7 +277,7 @@ async function loadComplaintDetails(complaintId) {
           ${canEdit ? `
           <div class="input-group mb-3">
             <input type="text" class="form-control" id="note-input-${c.id}" placeholder="Add internal note...">
-            <button class="btn btn-outline-primary" onclick="addComplaintNote(${c.id})">Add Note</button>
+            <button class="btn btn-outline-primary" id="add-note-btn-${c.id}" data-id="${c.id}">Add Note</button>
           </div>
           ` : ''}
         </div>
@@ -381,32 +381,62 @@ async function updateComplaint(complaintId) {
 
 // Add note to complaint
 async function addComplaintNote(complaintId) {
+  console.log('[NOTES] addComplaintNote called with ID:', complaintId, 'Type:', typeof complaintId);
+  
+  complaintId = parseInt(complaintId);
+  console.log('[NOTES] Parsed ID:', complaintId, 'IsNaN:', isNaN(complaintId));
+  
+  if (!complaintId || isNaN(complaintId)) {
+    showToast('Invalid complaint ID', 'error');
+    return;
+  }
+  
   const input = document.getElementById(`note-input-${complaintId}`);
-  const note = input?.value?.trim();
+  console.log('[NOTES] Input element found:', !!input);
+  
+  if (!input) {
+    console.error('[NOTES] Input element not found for ID:', `note-input-${complaintId}`);
+    showToast('Input field not found', 'error');
+    return;
+  }
+  
+  const note = input.value.trim();
+  console.log('[NOTES] Note value:', note);
+  
   if (!note) {
     showToast('Please enter a note', 'error');
     return;
   }
 
-  console.log('[NOTES] Adding note to complaint ID:', complaintId, 'note:', note);
+  console.log('[NOTES] Adding note to complaint ID:', complaintId);
+
+  const btn = input.nextElementSibling;
+  const originalBtnText = btn ? btn.innerHTML : '';
+  if (btn) btn.disabled = true;
 
   try {
-    // Use absolute path with leading slash to match other API calls
     const url = `/complaints/${complaintId}/notes/`;
-    console.log('[NOTES] Calling API:', url);
+    console.log('[NOTES] Full URL:', window.location.origin + '/api' + url);
+    console.log('[NOTES] Request body:', JSON.stringify({ note: note }));
     
     const res = await api.post(url, { note: note });
     console.log('[NOTES] Response status:', res.status);
-    console.log('[NOTES] Response ok:', res.ok);
+    
+    const responseText = await res.text();
+    console.log('[NOTES] Response text:', responseText);
     
     if (!res.ok) {
-      const errorText = await res.text();
-      console.error('[NOTES] Error response:', errorText);
-      showToast('Server error: ' + res.status, 'error');
+      console.error('[NOTES] Error response:', responseText);
+      try {
+        const errorData = JSON.parse(responseText);
+        showToast(errorData.message || 'Server error: ' + res.status, 'error');
+      } catch {
+        showToast('Server error: ' + res.status + ' - ' + responseText, 'error');
+      }
       return;
     }
     
-    const data = await res.json();
+    const data = JSON.parse(responseText);
     console.log('[NOTES] Response data:', data);
     
     if (data.success) {
@@ -417,10 +447,15 @@ async function addComplaintNote(complaintId) {
       showToast(data.message || 'Failed to add note', 'error');
     }
   } catch (e) {
-    console.error('[NOTES] Exception:', e.name, e.message);
+    console.error('[NOTES] Exception:', e.name, e.message, e.stack);
     showToast('Failed to add note: ' + e.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
+
+// Make function globally available
+window.addComplaintNote = addComplaintNote;
 
 // Notices
 async function loadNotices() {
@@ -730,23 +765,29 @@ document.getElementById('maintenance-form')?.addEventListener('submit', async (e
 
 // Dues
 async function loadDues() {
+  const month = document.getElementById('dues-month')?.value;
   const tbody = document.getElementById('dues-tbody');
   tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="spinner"></div></td></tr>';
   
   try {
-    const res = await api.get('/finance/dues/');
+    let url = '/finance/dues/';
+    if (month) {
+      url += '?month=' + month;
+    }
+    const res = await api.get(url);
     const data = await res.json();
     const dues = data.results || [];
     
     if (dues.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No dues found</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No dues found for selected month</td></tr>';
       return;
     }
 
     tbody.innerHTML = dues.map(d => `
       <tr>
+        <td>${d.month ? new Date(d.month).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : '-'}</td>
         <td>${d.flat_no || '-'}</td>
-        <td>${d.resident_name}</td>
+        <td>${d.resident_name || '-'}</td>
         <td>₹${d.amount}</td>
         <td>${d.is_paid ? '<span class="badge badge-success">Paid</span>' : '<span class="badge badge-danger">Unpaid</span>'}</td>
         <td>${d.paid_at ? formatDate(d.paid_at) : '-'}</td>
@@ -756,7 +797,7 @@ async function loadDues() {
     `).join('');
   } catch (e) {
     console.error('Dues load error:', e);
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Failed to load dues</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">Failed to load dues</td></tr>';
   }
 }
 
@@ -1105,3 +1146,13 @@ window.toggleNoticeBody = function(noticeId) {
     iconEl.classList.toggle('fa-rotate-90');
   }
 };
+
+// Event delegation for complaint note buttons
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('[id^="add-note-btn-"]');
+  if (btn) {
+    const complaintId = parseInt(btn.dataset.id);
+    console.log('[NOTES] Button clicked, complaint ID:', complaintId);
+    addComplaintNote(complaintId);
+  }
+});

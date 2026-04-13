@@ -146,9 +146,19 @@ class DueListCreateView(generics.ListCreateAPIView):
         return DueSerializer
 
     def get_queryset(self):
-        return Due.objects.filter(
+        queryset = Due.objects.filter(
             society=self.request.user.society
         ).select_related('resident')
+        
+        month_param = self.request.query_params.get('month')
+        if month_param:
+            try:
+                month_date = datetime.strptime(month_param, '%Y-%m').date().replace(day=1)
+                queryset = queryset.filter(month=month_date)
+            except ValueError:
+                pass
+        
+        return queryset.order_by('-month')
 
 
 class MyDuesView(generics.ListAPIView):
