@@ -84,6 +84,13 @@
 - Vendor and slot management
 - **Immutable audit logs** — every action logged (who, what, when)
 
+### 💬 Real-Time Chat
+- Direct messaging between **Committee members** and **Residents**
+- Seamless communication for quick queries, updates, and issue resolution
+- Chat history preserved for future reference
+- Accessible from the **Chat** tab in both Committee and Resident dashboards
+- Real-time message updates with visual indicators
+
 ---
 
 ## 🛠️ Tech Stack
@@ -96,6 +103,7 @@
 | Database | MySQL 8 | Relational data storage |
 | AI — Text | Google Gemini 1.5 Flash | Bylaw Q&A and complaint summaries |
 | AI — Voice | Groq Whisper Large V3 | Voice complaint transcription |
+| Real-Time Chat | JavaScript Polling | Committee-Resident messaging |
 | File Storage | Django FileField | Local storage (S3-ready) |
 
 ---
@@ -123,6 +131,8 @@ Three roles: **Admin**, **Committee**, **Resident**
 | View AI summary | ✅ | ✅ | ❌ |
 | Approve users | ✅ | ✅ | ❌ |
 | View audit logs | ✅ | ❌ | ❌ |
+| Chat with residents | ❌ | ✅ | ✅ |
+| Chat with committee | ❌ | ✅ | ✅ |
 
 **Access URLs:**
 - Admin → `/admin-panel/`
@@ -142,7 +152,7 @@ Three roles: **Admin**, **Committee**, **Resident**
 ### Step 1 — Clone the Repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/Vikash97600/Panchayat-society-app.git
 cd Panchayat-society-app
 ```
 
@@ -309,6 +319,15 @@ All APIs use JWT authentication. Token is stored in `localStorage` after login.
 |---|---|---|
 | `/api/ai/summary/` | `GET` | Get AI complaint summary |
 
+### Chat
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/chat/rooms/` | `GET` | List chat rooms |
+| `/api/chat/rooms/` | `POST` | Create chat room |
+| `/api/chat/rooms/<id>/messages/` | `GET` | Get messages in a room |
+| `/api/chat/rooms/<id>/messages/` | `POST` | Send message to a room |
+
 ---
 
 ## 🗄️ Database Schema
@@ -321,7 +340,7 @@ All APIs use JWT authentication. Token is stored in `localStorage` after login.
 
 **`complaints`** — `id`, `society_id`, `submitted_by_id`, `title`, `description`, `audio_file_path`, `ai_transcript`, `language`, `category`, `priority` (low/medium/urgent), `status` (open/in_progress/resolved/closed), `assigned_to_id`, `created_at`, `updated_at`
 
-Other tables: `bylaws`, `services`, `service_slots`, `bookings`, `maintenance_categories`, `maintenance_ledger`, `dues`, `notices`, `audit_logs`, `complaint_notes`
+Other tables: `bylaws`, `services`, `service_slots`, `bookings`, `maintenance_categories`, `maintenance_ledger`, `dues`, `notices`, `audit_logs`, `complaint_notes`, `chat_rooms`, `chat_messages`
 
 ---
 
@@ -343,6 +362,7 @@ Panchayat-society-app/
 │   ├── services/                 ← Service booking
 │   ├── finance/                  ← Maintenance + dues
 │   ├── notices/                  ← Notice board
+│   ├── chat/                     ← Real-time messaging
 │   └── ai_engine/                ← Gemini + Groq integrations
 │       ├── gemini_client.py
 │       ├── groq_client.py
@@ -360,6 +380,7 @@ Panchayat-society-app/
 │       ├── api.js                ← Fetch with JWT
 │       ├── voice-recorder.js
 │       ├── bylaw-chat.js
+│       ├── chat.js                ← Chat functionality
 │       ├── admin.js
 │       ├── committee.js
 │       └── resident.js
