@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser, Society
+from .models import CustomUser, Society, AuditLog
 
 
 class SocietySerializer(serializers.ModelSerializer):
@@ -93,3 +93,15 @@ class ChangePasswordSerializer(serializers.Serializer):
         if data['new_password'] != data['confirm_password']:
             raise serializers.ValidationError("New passwords do not match")
         return data
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = AuditLog
+        fields = ['id', 'user_name', 'action', 'model_name', 'object_id', 'details', 'ip_address', 'timestamp']
+        read_only_fields = ['timestamp']
+    
+    def get_user_name(self, obj):
+        return obj.user.get_full_name() if obj.user else 'System'

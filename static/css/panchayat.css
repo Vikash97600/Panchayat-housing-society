@@ -478,6 +478,7 @@ a:hover {
   transition: var(--transition);
   position: relative;
   overflow: hidden;
+  opacity: 1 !important;
 }
 
 .btn::after {
@@ -532,14 +533,29 @@ a:hover {
 }
 
 .btn-outline {
-  background: transparent;
-  border: 2px solid var(--brand-primary);
-  color: var(--brand-primary);
+  background: transparent !important;
+  border: 2px solid var(--brand-primary) !important;
+  color: var(--brand-primary) !important;
+  opacity: 1 !important;
 }
 
 .btn-outline:hover {
-  background: var(--brand-primary);
-  color: var(--text-inverse);
+  background: var(--brand-primary) !important;
+  color: var(--text-inverse) !important;
+  opacity: 1 !important;
+}
+
+.btn-outline-primary {
+  background: transparent !important;
+  border: 2px solid var(--brand-primary) !important;
+  color: var(--brand-primary) !important;
+  opacity: 1 !important;
+}
+
+.btn-outline-primary:hover {
+  background: var(--brand-primary) !important;
+  color: var(--text-inverse) !important;
+  opacity: 1 !important;
 }
 
 .btn-sm {

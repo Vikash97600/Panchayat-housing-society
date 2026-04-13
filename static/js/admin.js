@@ -847,23 +847,120 @@ async function bulkUpdateServices(activate) {
   }
 }
 
+// Audit Log - Format details to readable sentence
+function formatAuditDetails(log) {
+  if (!log.details) return '-';
+  
+  const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+  const action = log.action;
+  const model = log.model_name || '';
+  
+  const actionPatterns = {
+    'user_registered': `New user registered with email ${details.email || 'unknown'}`,
+    'user_login': `User logged in successfully`,
+    'user_logout': `User logged out`,
+    'user_approved': `User account was approved`,
+    'user_updated': `User profile was updated`,
+    'password_changed': `User changed their password`,
+    'password_reset': `User reset their password`,
+    'password_reset_requested': `Password reset requested`,
+    'society_created': `New society "${details.name || ''}" was created`,
+    'society_updated': `Society "${details.name || ''}" was updated`,
+    'service_created': `New service was created`,
+    'service_updated': `Service was updated`,
+    'service_deleted': `Service was deleted`,
+    'booking_created': `New booking was created`,
+    'booking_cancelled': `Booking was cancelled`,
+    'notice_created': `New notice was published`,
+    'notice_updated': `Notice was updated`,
+    'notice_deleted': `Notice was deleted`,
+    'complaint_created': `New complaint was submitted`,
+    'complaint_updated': `Complaint status was updated`,
+    'complaint_deleted': `Complaint was deleted`,
+    'note_added': `Note added to complaint`,
+    'bylaw_uploaded': `Bylaw document was uploaded`,
+    'due_marked_paid': `Due payment was marked as paid`,
+  };
+  
+  if (actionPatterns[action]) {
+    return actionPatterns[action];
+  }
+  
+  // Fallback: format key-value pairs
+  if (typeof details === 'object' && details !== null) {
+    const parts = [];
+    for (const [key, value] of Object.entries(details)) {
+      if (key !== 'id' && key !== 'created_at') {
+        parts.push(`${key}: ${value}`);
+      }
+    }
+    return parts.length > 0 ? parts.join(', ') : '-';
+  }
+  
+  return String(details);
+}
+
 // Audit Log
 async function loadAuditLog() {
   const tbody = document.getElementById('audit-tbody');
-  tbody.innerHTML = `
+  const fullTbody = document.getElementById('full-audit-tbody');
+  
+  const loadingHtml = `
     <tr>
       <td colspan="4" class="text-center text-muted py-4">
-        <div class="empty-state">
-          <i class="fas fa-history empty-state-icon"></i>
-          <h4>No Activity</h4>
-          <p>System activity will be logged here</p>
-        </div>
+        <div class="spinner"></div>
+        <p class="mt-2">Loading audit logs...</p>
       </td>
     </tr>
   `;
   
-  const fullTbody = document.getElementById('full-audit-tbody');
-  fullTbody.innerHTML = tbody.innerHTML;
+  tbody.innerHTML = loadingHtml;
+  fullTbody.innerHTML = loadingHtml;
+  
+  try {
+    const res = await api.get('/auth/audit-logs/');
+    const data = await res.json();
+    
+    if (data.results && data.results.length > 0) {
+      const rows = data.results.map(log => `
+        <tr>
+          <td>${formatDate(log.timestamp)}</td>
+          <td>${log.user_name || 'System'}</td>
+          <td><span class="badge badge-primary">${log.action}</span></td>
+          <td>${formatAuditDetails(log)}</td>
+        </tr>
+      `).join('');
+      
+      tbody.innerHTML = rows;
+      fullTbody.innerHTML = rows;
+    } else {
+      const emptyHtml = `
+        <tr>
+          <td colspan="4" class="text-center text-muted py-4">
+            <div class="empty-state">
+              <i class="fas fa-history empty-state-icon"></i>
+              <h4>No Activity</h4>
+              <p>System activity will be logged here</p>
+            </div>
+          </td>
+        </tr>
+      `;
+      tbody.innerHTML = emptyHtml;
+      fullTbody.innerHTML = emptyHtml;
+    }
+  } catch (error) {
+    console.error('Error loading audit logs:', error);
+    const errorHtml = `
+      <tr>
+        <td colspan="4" class="text-center text-danger py-4">
+          <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+          <p>Failed to load audit logs</p>
+        </td>
+      </tr>
+    `;
+    tbody.innerHTML = errorHtml;
+    fullTbody.innerHTML = errorHtml;
+  }
 }
 
 // Save Society

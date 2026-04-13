@@ -853,14 +853,29 @@ a:not(.btn):hover {
 }
 
 .btn-outline {
-  background: transparent;
-  border-color: var(--brand-primary);
-  color: var(--brand-primary);
+  background: transparent !important;
+  border-color: var(--brand-primary) !important;
+  color: var(--brand-primary) !important;
+  opacity: 1 !important;
 }
 
 .btn-outline:hover {
-  background: var(--brand-primary);
-  color: var(--text-inverse);
+  background: var(--brand-primary) !important;
+  color: var(--text-inverse) !important;
+  opacity: 1 !important;
+}
+
+.btn-outline-primary {
+  background: transparent !important;
+  border-color: var(--brand-primary) !important;
+  color: var(--brand-primary) !important;
+  opacity: 1 !important;
+}
+
+.btn-outline-primary:hover {
+  background: var(--brand-primary) !important;
+  color: var(--text-inverse) !important;
+  opacity: 1 !important;
 }
 
 /* Modals */

@@ -10,7 +10,8 @@ from .models import CustomUser, Society, AuditLog, PasswordResetToken
 from .serializers import (
     CustomUserSerializer, CustomUserCreateSerializer, 
     UserLoginSerializer, UserProfileSerializer, SocietySerializer,
-    ForgotPasswordSerializer, ResetPasswordSerializer, ChangePasswordSerializer
+    ForgotPasswordSerializer, ResetPasswordSerializer, ChangePasswordSerializer,
+    AuditLogSerializer
 )
 
 
@@ -385,3 +386,12 @@ class ChangePasswordView(generics.GenericAPIView):
             'data': {},
             'message': 'Password changed successfully. Please login again with your new password.'
         }, status=status.HTTP_200_OK)
+
+
+class AuditLogListView(generics.ListAPIView):
+    queryset = AuditLog.objects.all().order_by('-timestamp')
+    serializer_class = AuditLogSerializer
+    permission_classes = [IsAdmin]
+    
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
