@@ -603,23 +603,23 @@
 }
 
 [data-theme="gov-admin"] .badge-status-approved {
-  background: #2E7D32;
-  color: white;
+  background: var(--success);
+  color: var(--text-inverse);
 }
 
 [data-theme="gov-admin"] .badge-status-pending {
-  background: #F9A825;
-  color: #1a2744;
+  background: var(--warning);
+  color: var(--dark);
 }
 
 [data-theme="gov-admin"] .badge-status-rejected {
-  background: #C62828;
-  color: white;
+  background: var(--danger);
+  color: var(--text-inverse);
 }
 
 [data-theme="gov-admin"] .badge-status-archived {
-  background: #6b7280;
-  color: white;
+  background: var(--gray);
+  color: var(--text-inverse);
 }
   /* Brand Colors */
   --brand-primary: #92400e;
@@ -808,8 +808,10 @@ a:not(.btn):hover {
 }
 
 .table th {
-  color: var(--text-secondary);
+  color: var(--text-primary, #1f2937);
+  font-weight: 700;
   border-color: var(--border);
+  background: var(--bg-light);
 }
 
 .table td {
@@ -827,7 +829,27 @@ a:not(.btn):hover {
 
 /* Buttons */
 .btn {
-  color: #ffffff;
+  color: var(--text-inverse, #ffffff);
+}
+
+.btn-primary,
+.btn-success,
+.btn-danger,
+.btn-warning,
+.btn-info {
+  color: var(--text-inverse, #ffffff);
+}
+
+.btn-secondary {
+  color: var(--text-primary);
+}
+
+.btn-light {
+  color: var(--text-primary);
+}
+
+.btn-dark {
+  color: var(--text-inverse, #ffffff);
 }
 
 .btn-outline {
@@ -838,7 +860,7 @@ a:not(.btn):hover {
 
 .btn-outline:hover {
   background: var(--brand-primary);
-  color: #ffffff;
+  color: var(--text-inverse);
 }
 
 /* Modals */

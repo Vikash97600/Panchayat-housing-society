@@ -13,17 +13,17 @@
   }
   
   .sidebar-resident .nav-link {
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--sidebar-text-muted, rgba(255, 255, 255, 0.7));
   }
   
   .sidebar-resident .nav-link:hover {
-    color: white;
+    color: var(--sidebar-text, white);
     background: rgba(255, 255, 255, 0.1);
   }
   
   .sidebar-resident .nav-link.active {
     background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
+    color: var(--sidebar-text, white);
   }
 
   /* Sub-tabs navigation */
@@ -192,7 +192,7 @@
   
   .quick-action-card:hover .action-icon {
     background: var(--brand-primary);
-    color: white;
+    color: var(--text-inverse, white);
     transform: scale(1.1);
   }
   
@@ -277,7 +277,7 @@
     border-radius: 50%;
     background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
     border: none;
-    color: white;
+    color: var(--text-inverse, white);
     font-size: 40px;
     cursor: pointer;
     transition: var(--transition);
@@ -493,14 +493,14 @@
   
   .filter-tab.active {
     background: var(--brand-primary);
-    color: white;
+    color: var(--text-inverse, white);
     box-shadow: var(--shadow-sm);
   }
 
   /* Welcome banner enhanced */
   .welcome-banner {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: white;
+    color: var(--text-inverse, white);
     padding: 32px;
     border-radius: var(--radius-lg);
     margin-bottom: 32px;
@@ -535,7 +535,7 @@
   }
   
   .welcome-banner h4 {
-    color: white;
+    color: var(--text-inverse, white);
     font-size: 1.75rem;
     margin-bottom: 8px;
     position: relative;
@@ -603,13 +603,13 @@
     align-items: center;
     justify-content: center;
     font-size: 32px;
-    color: white;
+    color: var(--text-inverse, white);
     border: 3px solid rgba(255, 255, 255, 0.3);
   }
   
   .profile-header-info h3 {
     margin: 0;
-    color: white;
+    color: var(--text-inverse, white);
     font-size: 24px;
     font-weight: 600;
   }
@@ -618,7 +618,7 @@
     display: inline-block;
     padding: 6px 14px;
     background: rgba(255, 255, 255, 0.2);
-    color: white;
+    color: var(--text-inverse, white);
     border-radius: 20px;
     font-size: 13px;
     font-weight: 500;
@@ -658,7 +658,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
+    color: var(--text-inverse, white);
     font-size: 16px;
     flex-shrink: 0;
   }
@@ -1257,7 +1257,7 @@
         <h2><i class="fas fa-rupee-sign me-2"></i>My Dues</h2>
       </div>
       
-      <div class="card mb-4" id="current-month-dues" style="background: var(--gradient-primary); color: white;">
+      <div class="card mb-4" id="current-month-dues" style="background: var(--gradient-primary); color: var(--text-inverse);">
         <div class="card-body">
           <h5>Current Month</h5>
           <div class="row align-items-center">

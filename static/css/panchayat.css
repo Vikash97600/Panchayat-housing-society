@@ -502,7 +502,7 @@ a:hover {
 
 .btn-primary {
   background: var(--gradient-primary);
-  color: white;
+  color: var(--text-inverse);
   box-shadow: var(--shadow-sm);
 }
 
@@ -513,7 +513,7 @@ a:hover {
 
 .btn-secondary {
   background: var(--bg-light);
-  color: var(--dark-secondary);
+  color: var(--dark);
   border: 1px solid var(--border);
 }
 
@@ -523,12 +523,12 @@ a:hover {
 
 .btn-success {
   background: var(--gradient-success);
-  color: white;
+  color: var(--text-inverse);
 }
 
 .btn-danger {
   background: var(--danger);
-  color: white;
+  color: var(--text-inverse);
 }
 
 .btn-outline {
@@ -539,7 +539,7 @@ a:hover {
 
 .btn-outline:hover {
   background: var(--brand-primary);
-  color: white;
+  color: var(--text-inverse);
 }
 
 .btn-sm {
@@ -651,10 +651,10 @@ a:hover {
 .table th {
   padding: 16px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--gray);
+  color: var(--dark);
   text-align: left;
   border-bottom: 2px solid var(--border);
 }
