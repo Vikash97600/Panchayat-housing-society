@@ -760,17 +760,17 @@ a:not(.btn):hover {
 }
 
 .sidebar-nav .nav-link {
-  color: var(--sidebar-text);
+  color: #ffffff !important;
 }
 
 .sidebar-nav .nav-link:hover {
   background: var(--sidebar-hover);
-  color: var(--sidebar-text);
+  color: #ffffff !important;
 }
 
 .sidebar-nav .nav-link.active {
   background: var(--sidebar-active);
-  color: var(--text-inverse);
+  color: #ffffff !important;
 }
 
 /* Forms */
