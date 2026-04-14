@@ -11,7 +11,7 @@ from .serializers import NoticeSerializer, NoticeCreateSerializer, NoticeUpdateS
 
 class IsAdminOrCommittee(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in ['admin', 'committee']
+        return request.user.is_authenticated and request.user.role in ['admin', 'secretary', 'treasurer', 'committee']
 
 
 class NoticeListView(generics.ListAPIView):
@@ -19,7 +19,11 @@ class NoticeListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        queryset = Notice.objects.filter(society=self.request.user.society)
+        user = self.request.user
+        if user.role == 'admin':
+            queryset = Notice.objects.all()
+        else:
+            queryset = Notice.objects.filter(society=user.society)
         
         active_only = self.request.query_params.get('active')
         if active_only == 'true':
@@ -35,13 +39,32 @@ class NoticeCreateView(generics.CreateAPIView):
     serializer_class = NoticeCreateSerializer
     permission_classes = [IsAdminOrCommittee]
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        user = self.request.user
+        if not user.society:
+            return Response({
+                'success': False,
+                'data': {},
+                'message': 'User is not associated with any society'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
         notice = serializer.save(
-            society=self.request.user.society,
-            posted_by=self.request.user
+            society=user.society,
+            posted_by=user
         )
+        
         log_audit(self.request.user, 'notice_created', 'Notice', notice.id,
                   {'title': notice.title}, self.request)
+        
+        from .serializers import NoticeSerializer
+        return Response({
+            'success': True,
+            'data': NoticeSerializer(notice).data,
+            'message': 'Notice posted successfully'
+        }, status=status.HTTP_201_CREATED)
 
 
 class NoticeDeleteView(generics.DestroyAPIView):
