@@ -108,6 +108,7 @@ urlpatterns = [
     path('api/complaints/', include('apps.complaints.urls')),
     path('api/bylaws/', include('apps.bylaws.urls')),
     path('api/services/', include('apps.services.urls')),
+    path('api/', include('apps.services.urls')),
     path('api/finance/', include('apps.finance.urls')),
     path('api/notices/', include('apps.notices.urls')),
     path('api/ai/', include('apps.ai_engine.urls')),

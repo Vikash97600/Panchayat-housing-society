@@ -885,7 +885,7 @@ async function loadBookings() {
       services.forEach(s => {
         const option = document.createElement('option');
         option.value = s.id;
-        option.textContent = s.name;
+        option.textContent = s.name + (s.society ? ' (' + s.society.name + ')' : '');
         serviceSelect.appendChild(option);
       });
     } catch (e) {

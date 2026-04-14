@@ -1,5 +1,6 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 from datetime import datetime, timedelta
@@ -19,7 +20,7 @@ class IsResident(permissions.BasePermission):
 
 class IsAdminOrCommittee(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in ['admin', 'committee']
+        return request.user.is_authenticated and request.user.role in ['admin', 'secretary', 'treasurer', 'committee']
 
 
 class ServiceListView(generics.ListAPIView):
@@ -27,7 +28,23 @@ class ServiceListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Service.objects.filter(society=self.request.user.society)
+        user = self.request.user
+        
+        if user.role == 'admin':
+            return Service.objects.all().order_by('-created_at')
+        
+        if user.role in ['secretary', 'treasurer', 'committee']:
+            society = user.society
+            if not society:
+                try:
+                    society = user.resident_profile.society
+                except:
+                    pass
+            if society:
+                return Service.objects.filter(society=society)
+            return Service.objects.none()
+        
+        return Service.objects.filter(is_active=True).order_by('-created_at')
 
 
 class ServiceCreateView(generics.CreateAPIView):
@@ -46,9 +63,17 @@ class ServiceCreateView(generics.CreateAPIView):
         }, status=status.HTTP_201_CREATED, headers=headers)
     
     def perform_create(self, serializer):
-        service = serializer.save(society=self.request.user.society, created_by=self.request.user)
+        user = self.request.user
+        society = user.society
+        if not society:
+            try:
+                society = user.resident_profile.society
+            except:
+                pass
         
-        log_audit(self.request.user, 'service_created', 'Service', service.id,
+        service = serializer.save(society=society, created_by=user)
+        
+        log_audit(user, 'service_created', 'Service', service.id,
                   {'name': service.name}, self.request)
 
 
@@ -58,15 +83,22 @@ class ServiceDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ['admin', 'committee']:
-            # Admins and committee can see all services (active/inactive)
-            return Service.objects.filter(society=user.society)
-        else:
-            # Residents can only see active services
-            return Service.objects.filter(
-                society=user.society,
-                is_active=True
-            )
+        
+        if user.role == 'admin':
+            return Service.objects.all()
+        
+        if user.role in ['secretary', 'treasurer', 'committee']:
+            society = user.society
+            if not society:
+                try:
+                    society = user.resident_profile.society
+                except:
+                    pass
+            if society:
+                return Service.objects.filter(society=society)
+            return Service.objects.none()
+        
+        return Service.objects.filter(is_active=True)
 
 
 class ServiceUpdateView(generics.UpdateAPIView):
@@ -74,7 +106,18 @@ class ServiceUpdateView(generics.UpdateAPIView):
     permission_classes = [IsAdminOrCommittee]
     
     def get_queryset(self):
-        return Service.objects.filter(society=self.request.user.society)
+        user = self.request.user
+        
+        if user.role == 'admin':
+            return Service.objects.all()
+        
+        society = user.society
+        if not society:
+            try:
+                society = user.resident_profile.society
+            except:
+                pass
+        return Service.objects.filter(society=society)
     
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -101,7 +144,18 @@ class ServiceDeleteView(generics.DestroyAPIView):
     permission_classes = [IsAdminOrCommittee]
     
     def get_queryset(self):
-        return Service.objects.filter(society=self.request.user.society)
+        user = self.request.user
+        
+        if user.role == 'admin':
+            return Service.objects.all()
+        
+        society = user.society
+        if not society:
+            try:
+                society = user.resident_profile.society
+            except:
+                pass
+        return Service.objects.filter(society=society)
     
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -118,18 +172,94 @@ class ServiceDeleteView(generics.DestroyAPIView):
         }, status=status.HTTP_200_OK)
 
 
+class ServiceGenerateSlotsView(generics.CreateAPIView):
+    serializer_class = ServiceSlotSerializer
+    permission_classes = [IsAdminOrCommittee]
+
+    def create(self, request, *args, **kwargs):
+        service_id = request.data.get('service_id')
+        start_date = request.data.get('start_date')
+        end_date = request.data.get('end_date')
+        start_time = request.data.get('start_time', '09:00')
+        end_time = request.data.get('end_time', '18:00')
+        
+        if not service_id or not start_date or not end_date:
+            return Response({
+                'success': False,
+                'message': 'service_id, start_date, and end_date are required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            service = Service.objects.get(id=service_id)
+        except Service.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Service not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        from datetime import datetime
+        start = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end = datetime.strptime(end_date, '%Y-%m-%d').date()
+        
+        slots_created = 0
+        current = start
+        while current <= end:
+            slot, created = ServiceSlot.objects.get_or_create(
+                service=service,
+                slot_date=current,
+                start_time=start_time,
+                defaults={
+                    'end_time': end_time,
+                    'is_available': True
+                }
+            )
+            if created:
+                slots_created += 1
+            current += timedelta(days=1)
+        
+        return Response({
+            'success': True,
+            'message': f'Generated {slots_created} slots successfully',
+            'data': {'slots_created': slots_created}
+        }, status=status.HTTP_201_CREATED)
+
+
 class ServiceSlotsView(generics.ListAPIView):
     serializer_class = ServiceSlotSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        user = self.request.user
+        
         service_id = self.kwargs['pk']
-        queryset = ServiceSlot.objects.filter(
-            service__id=service_id,
-            service__society=self.request.user.society,
-            is_available=True,
-            slot_date__gte=timezone.now().date()
-        )
+        
+        if user.role == 'admin':
+            queryset = ServiceSlot.objects.filter(
+                service__id=service_id,
+                slot_date__gte=timezone.now().date()
+            )
+        elif user.role in ['secretary', 'treasurer', 'committee']:
+            society = user.society
+            if not society:
+                try:
+                    society = user.resident_profile.society
+                except:
+                    pass
+            if society:
+                queryset = ServiceSlot.objects.filter(
+                    service__id=service_id,
+                    service__society=society,
+                    slot_date__gte=timezone.now().date()
+                )
+            else:
+                queryset = ServiceSlot.objects.none()
+        else:
+            queryset = ServiceSlot.objects.filter(
+                service__id=service_id,
+                service__is_active=True,
+                is_available=True,
+                slot_date__gte=timezone.now().date()
+            )
 
         date_param = self.request.query_params.get('date')
         if date_param:
@@ -148,9 +278,27 @@ class BookingListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Booking.objects.filter(
-            slot__service__society=user.society
-        ).select_related('resident', 'slot__service')
+        
+        if user.role == 'admin':
+            queryset = Booking.objects.all().select_related('resident', 'slot__service', 'slot__service__society')
+        elif user.role in ['secretary', 'treasurer', 'committee']:
+            society = user.society
+            if not society:
+                try:
+                    society = user.resident_profile.society
+                except:
+                    pass
+            
+            if society:
+                queryset = Booking.objects.filter(
+                    slot__service__society=society
+                ).select_related('resident', 'slot__service', 'slot__service__society')
+            else:
+                queryset = Booking.objects.none()
+        else:
+            queryset = Booking.objects.filter(
+                slot__service__is_active=True
+            ).select_related('resident', 'slot__service', 'slot__service__society')
 
         # Filter by service
         service_id = self.request.query_params.get('service')
@@ -197,8 +345,18 @@ class BookingDetailView(generics.RetrieveUpdateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ['admin', 'committee']:
-            return Booking.objects.filter(slot__service__society=user.society)
+        
+        if user.role in ['admin', 'secretary', 'treasurer', 'committee']:
+            society = user.society
+            if not society:
+                try:
+                    society = user.resident_profile.society
+                except:
+                    pass
+            
+            if society:
+                return Booking.objects.filter(slot__service__society=society)
+            return Booking.objects.none()
         return Booking.objects.filter(resident=user)
 
     @transaction.atomic
@@ -214,8 +372,18 @@ class BookingCancelView(generics.UpdateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ['admin', 'committee']:
-            return Booking.objects.filter(slot__service__society=user.society)
+        
+        if user.role in ['admin', 'secretary', 'treasurer', 'committee']:
+            society = user.society
+            if not society:
+                try:
+                    society = user.resident_profile.society
+                except:
+                    pass
+            
+            if society:
+                return Booking.objects.filter(slot__service__society=society)
+            return Booking.objects.none()
         return Booking.objects.filter(resident=user)
 
     @transaction.atomic

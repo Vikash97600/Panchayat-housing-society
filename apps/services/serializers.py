@@ -20,10 +20,11 @@ class ServiceCreateSerializer(serializers.ModelSerializer):
 class ServiceSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.full_name', read_only=True)
     updated_by_name = serializers.CharField(source='updated_by.full_name', read_only=True)
+    society_name = serializers.CharField(source='society.name', read_only=True)
     
     class Meta:
         model = Service
-        fields = ['id', 'society', 'name', 'description', 'vendor_name', 
+        fields = ['id', 'society', 'society_name', 'name', 'description', 'vendor_name', 
                   'vendor_phone', 'price_per_slot', 'is_active', 'created_at', 
                   'updated_at', 'created_by', 'updated_by', 'created_by_name', 'updated_by_name']
 
@@ -45,8 +46,8 @@ class ServiceWithSlotsSerializer(ServiceSerializer):
 class BookingSerializer(serializers.ModelSerializer):
     resident_name = serializers.CharField(source='resident.full_name', read_only=True)
     resident_phone = serializers.CharField(source='resident.phone', read_only=True)
-    resident_flat = serializers.CharField(source='resident.flat_no', read_only=True)
-    resident_wing = serializers.CharField(source='resident.wing', read_only=True)
+    resident_flat = serializers.SerializerMethodField()
+    resident_wing = serializers.SerializerMethodField()
     service_name = serializers.CharField(source='slot.service.name', read_only=True)
     slot_detail = ServiceSlotSerializer(source='slot', read_only=True)
 
@@ -55,6 +56,20 @@ class BookingSerializer(serializers.ModelSerializer):
         fields = ['id', 'resident', 'resident_name', 'resident_phone', 'resident_flat', 'resident_wing',
                   'slot', 'slot_detail', 'service_name', 'status', 'notes', 'created_at']
         read_only_fields = ['created_at']
+
+    def get_resident_flat(self, obj):
+        if obj.resident.flat_no:
+            return obj.resident.flat_no
+        if hasattr(obj.resident, 'resident_profile') and obj.resident.resident_profile:
+            return obj.resident.resident_profile.flat_no
+        return None
+
+    def get_resident_wing(self, obj):
+        if obj.resident.wing:
+            return obj.resident.wing
+        if hasattr(obj.resident, 'resident_profile') and obj.resident.resident_profile:
+            return obj.resident.resident_profile.wing_no
+        return None
 
 
 class BookingCreateSerializer(serializers.ModelSerializer):
@@ -72,8 +87,8 @@ class BookingUpdateSerializer(serializers.ModelSerializer):
 class BookingListSerializer(serializers.ModelSerializer):
     resident_name = serializers.CharField(source='resident.full_name', read_only=True)
     resident_phone = serializers.CharField(source='resident.phone', read_only=True)
-    resident_flat = serializers.CharField(source='resident.flat_no', read_only=True)
-    resident_wing = serializers.CharField(source='resident.wing', read_only=True)
+    resident_flat = serializers.SerializerMethodField()
+    resident_wing = serializers.SerializerMethodField()
     resident = serializers.IntegerField(source='resident.id', read_only=True)
     service_name = serializers.CharField(source='slot.service.name', read_only=True)
     slot_date = serializers.DateField(source='slot.slot_date', read_only=True)
@@ -86,3 +101,17 @@ class BookingListSerializer(serializers.ModelSerializer):
         fields = ['id', 'service_id', 'service_name', 'slot_date', 'start_time', 'end_time', 
                   'status', 'notes', 'created_at', 'resident', 'resident_name', 'resident_phone', 
                   'resident_flat', 'resident_wing']
+
+    def get_resident_flat(self, obj):
+        if obj.resident.flat_no:
+            return obj.resident.flat_no
+        if hasattr(obj.resident, 'resident_profile') and obj.resident.resident_profile:
+            return obj.resident.resident_profile.flat_no
+        return None
+
+    def get_resident_wing(self, obj):
+        if obj.resident.wing:
+            return obj.resident.wing
+        if hasattr(obj.resident, 'resident_profile') and obj.resident.resident_profile:
+            return obj.resident.resident_profile.wing_no
+        return None

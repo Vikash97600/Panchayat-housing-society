@@ -609,6 +609,69 @@ async function saveService() {
   setButtonLoading(btn, false);
 }
 
+async function loadServicesForSlots() {
+  const select = document.getElementById('slot-service');
+  if (!select) return;
+  
+  try {
+    const res = await api.get('/services/');
+    const data = await res.json();
+    const services = data.results || [];
+    
+    select.innerHTML = '<option value="">Choose a service...</option>' +
+      services.map(s => `<option value="${s.id}">${s.name} (${s.society_name || 'No society'})</option>`).join('');
+  } catch (e) {
+    console.error('Error loading services for slots:', e);
+  }
+}
+
+async function generateSlots() {
+  const serviceId = document.getElementById('slot-service').value;
+  const startDate = document.getElementById('slot-start-date').value;
+  const endDate = document.getElementById('slot-end-date').value;
+  const startTime = document.getElementById('slot-start-time').value || '09:00';
+  const endTime = document.getElementById('slot-end-time').value || '18:00';
+  
+  if (!serviceId || !startDate || !endDate) {
+    showToast('Please fill all required fields', 'error');
+    return;
+  }
+  
+  const btn = document.querySelector('#generateSlotsModal .btn-primary');
+  setButtonLoading(btn, true);
+  
+  try {
+    const res = await api.post('/services/generate-slots/', {
+      service_id: serviceId,
+      start_date: startDate,
+      end_date: endDate,
+      start_time: startTime,
+      end_time: endTime
+    });
+    const result = await res.json();
+    
+    if (res.ok && result.success) {
+      showToast(result.message, 'success');
+      bootstrap.Modal.getInstance(document.getElementById('generateSlotsModal')).hide();
+      document.getElementById('generate-slots-form').reset();
+    } else {
+      showToast(result.message || 'Failed to generate slots', 'error');
+    }
+  } catch (e) {
+    showToast('Error generating slots', 'error');
+  }
+  
+  setButtonLoading(btn, false);
+}
+
+document.getElementById('generateSlotsModal')?.addEventListener('show.bs.modal', function() {
+  loadServicesForSlots();
+  
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('slot-start-date').min = today;
+  document.getElementById('slot-end-date').min = today;
+});
+
 async function editService(serviceId) {
   console.log('[ADMIN] editService called with ID:', serviceId);
   
@@ -1100,6 +1163,7 @@ window.clearServiceFilters = clearServiceFilters;
 window.updateBulkActions = updateBulkActions;
 window.bulkDeleteServices = bulkDeleteServices;
 window.bulkUpdateServices = bulkUpdateServices;
+window.generateSlots = generateSlots;
 window.saveSociety = saveSociety;
 window.editSociety = editSociety;
 window.approveUser = approveUser;
