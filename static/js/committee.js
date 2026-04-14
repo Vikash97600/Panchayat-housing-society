@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('[COMMITTEE] auth.isAuthenticated:', typeof auth !== 'undefined' ? auth.isAuthenticated() : 'auth not defined');
   
   if (!requireAuth()) return;
-  if (!['admin', 'committee'].includes(localStorage.getItem('panchayat_role'))) {
+  if (!['admin', 'secretary', 'treasurer', 'committee'].includes(localStorage.getItem('panchayat_role'))) {
     window.location.href = '/login/';
     return;
   }
@@ -326,12 +326,20 @@ async function loadAssignees(complaintId, currentAssigneeId) {
     
     console.log('[COMPLAINT] Users response:', data);
     
+    const currentUser = auth.getUser();
+    const currentSocietyId = currentUser?.society;
+    
     if (data.results) {
-      const users = data.results.filter(u => u.role === 'committee' || u.role === 'admin');
+      let users = data.results.filter(u => ['admin', 'secretary', 'treasurer', 'committee'].includes(u.role));
+      
+      if (currentSocietyId) {
+        users = users.filter(u => u.society === currentSocietyId);
+      }
+      
       console.log('[COMPLAINT] Filtered users:', users);
       
       select.innerHTML = '<option value="">-- Unassigned --</option>' + 
-        users.map(u => `<option value="${u.id}" ${u.id == currentAssigneeId ? 'selected' : ''}>${u.full_name || u.email}</option>`).join('');
+        users.map(u => `<option value="${u.id}" ${u.id == currentAssigneeId ? 'selected' : ''}>${u.full_name || u.email} (${u.role})</option>`).join('');
     }
   } catch (e) {
     console.error('Error loading assignees:', e);
@@ -1107,13 +1115,28 @@ document.getElementById('change-password-form')?.addEventListener('submit', asyn
 // ============================================
 // Initialize Profile on Tab Switch
 // ============================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Load society name
+  try {
+    const res = await api.get('/auth/me/');
+    const result = await res.json();
+    if (result.success && result.data && result.data.society_name) {
+      const societyEl = document.getElementById('society-name');
+      if (societyEl) societyEl.textContent = result.data.society_name;
+    }
+  } catch (e) {
+    console.error('Error loading society:', e);
+  }
+  
   // Override switchTab to load profile when profile tab is activated
   const originalSwitchTab = window.switchTab;
   window.switchTab = function(tabId) {
     originalSwitchTab(tabId);
     if (tabId === 'profile') {
       loadProfile();
+    }
+    if (tabId === 'residents') {
+      loadResidents();
     }
     if (tabId === 'chat') {
       if (typeof initChat === 'function') {
@@ -1130,6 +1153,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const activeTab = activeTabLink?.dataset?.tab || (document.getElementById('tab-profile')?.classList.contains('active') ? 'profile' : (document.getElementById('tab-chat')?.classList.contains('active') ? 'chat' : null));
   if (activeTab === 'profile') {
     loadProfile();
+  }
+  if (activeTab === 'residents') {
+    loadResidents();
   }
   if (activeTab === 'chat' && typeof initChat === 'function') {
     initChat();
@@ -1156,3 +1182,104 @@ document.addEventListener('click', function(e) {
     addComplaintNote(complaintId);
   }
 });
+
+// ============================================
+// Resident Management
+// ============================================
+async function loadResidents() {
+  try {
+    const res = await api.get('/auth/resident/list/');
+    const result = await res.json();
+    
+    const tbody = document.getElementById('residents-tbody');
+    const countBadge = document.getElementById('resident-count');
+    
+    if (result.success && result.data) {
+      if (countBadge) countBadge.textContent = result.data.length;
+      
+      if (result.data.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center text-muted py-4">
+              <div class="empty-state">
+                <i class="fas fa-users empty-state-icon"></i>
+                <h4>No Residents</h4>
+                <p>Add residents to your society</p>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+      
+      tbody.innerHTML = result.data.map(r => `
+        <tr>
+          <td>${r.user_name || 'N/A'}</td>
+          <td>${r.user_email || 'N/A'}</td>
+          <td>${r.flat_no || 'N/A'}</td>
+          <td>${r.wing_no || 'N/A'}</td>
+          <td>${r.mobile_no || 'N/A'}</td>
+        </tr>
+      `).join('');
+    } else {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="text-center text-danger py-4">Failed to load residents</td>
+        </tr>
+      `;
+    }
+  } catch (e) {
+    console.error('Error loading residents:', e);
+    const tbody = document.getElementById('residents-tbody');
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" class="text-center text-danger py-4">Failed to load residents</td>
+      </tr>
+    `;
+  }
+}
+
+async function addResident() {
+  const password = document.getElementById('resident-password').value;
+  const confirmPassword = document.getElementById('resident-confirm-password').value;
+  
+  if (password !== confirmPassword) {
+    showToast('Passwords do not match', 'error');
+    return;
+  }
+  
+  if (password.length < 6) {
+    showToast('Password must be at least 6 characters', 'error');
+    return;
+  }
+  
+  const data = {
+    name: document.getElementById('resident-name').value,
+    email: document.getElementById('resident-email').value,
+    mobile_no: document.getElementById('resident-mobile').value,
+    flat_no: document.getElementById('resident-flat').value,
+    wing_no: document.getElementById('resident-wing').value,
+    password: password,
+    confirm_password: confirmPassword
+  };
+  
+  const btn = document.querySelector('#resident-form .btn-primary');
+  setButtonLoading(btn, true);
+  
+  try {
+    const res = await api.post('/auth/resident/add/', data);
+    const result = await res.json();
+    
+    if (result.success) {
+      showToast('Resident added successfully', 'success');
+      document.getElementById('resident-form').reset();
+      loadResidents();
+    } else {
+      showToast(result.message || 'Failed to add resident', 'error');
+    }
+  } catch (e) {
+    showToast('Error adding resident', 'error');
+  }
+  
+  setButtonLoading(btn, false);
+}

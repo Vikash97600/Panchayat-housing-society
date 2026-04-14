@@ -6,12 +6,12 @@ from django.utils import timezone
 from datetime import timedelta
 import uuid
 
-from .models import CustomUser, Society, AuditLog, PasswordResetToken
+from .models import CustomUser, Society, AuditLog, PasswordResetToken, CommitteeMember, Resident
 from .serializers import (
     CustomUserSerializer, CustomUserCreateSerializer, 
     UserLoginSerializer, UserProfileSerializer, SocietySerializer,
     ForgotPasswordSerializer, ResetPasswordSerializer, ChangePasswordSerializer,
-    AuditLogSerializer
+    AuditLogSerializer, AssignCommitteeSerializer, ResidentSerializer, AddResidentSerializer
 )
 
 
@@ -22,7 +22,7 @@ class IsAdmin(permissions.BasePermission):
 
 class IsCommittee(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in ['admin', 'committee']
+        return request.user.is_authenticated and request.user.role in ['admin', 'secretary', 'treasurer', 'committee']
 
 
 class IsResident(permissions.BasePermission):
@@ -32,7 +32,7 @@ class IsResident(permissions.BasePermission):
 
 class IsAdminOrCommittee(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in ['admin', 'committee']
+        return request.user.is_authenticated and request.user.role in ['admin', 'secretary', 'treasurer', 'committee']
 
 
 def log_audit(user, action, model_name=None, object_id=None, details=None, request=None):
@@ -176,7 +176,10 @@ class UserListView(generics.ListAPIView):
     permission_classes = [IsAdminOrCommittee]
 
     def get_queryset(self):
-        return CustomUser.objects.filter(society=self.request.user.society).select_related('society')
+        user = self.request.user
+        if user.role == 'admin':
+            return CustomUser.objects.all().select_related('society').prefetch_related('resident_profile')
+        return CustomUser.objects.filter(society=user.society).select_related('society').prefetch_related('resident_profile')
 
 
 class ApproveUserView(generics.UpdateAPIView):
@@ -395,3 +398,173 @@ class AuditLogListView(generics.ListAPIView):
     
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
+
+
+class AssignCommitteeView(generics.GenericAPIView):
+    serializer_class = AssignCommitteeSerializer
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        society_id = data['society_id']
+        secretary_data = data['secretary']
+        treasurer_data = data['treasurer']
+
+        try:
+            society = Society.objects.get(id=society_id)
+        except Society.DoesNotExist:
+            return Response({
+                'success': False,
+                'data': {},
+                'message': 'Society not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        if CustomUser.objects.filter(email=secretary_data['email']).exists():
+            return Response({
+                'success': False,
+                'data': {},
+                'message': f"Secretary email {secretary_data['email']} already exists"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if CustomUser.objects.filter(email=treasurer_data['email']).exists():
+            return Response({
+                'success': False,
+                'data': {},
+                'message': f"Treasurer email {treasurer_data['email']} already exists"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        secretary = CustomUser.objects.create_user(
+            username=secretary_data['email'],
+            email=secretary_data['email'],
+            first_name=secretary_data.get('name', '').split()[0] if secretary_data.get('name') else '',
+            last_name=' '.join(secretary_data.get('name', '').split()[1:]) if secretary_data.get('name') else '',
+            phone=secretary_data.get('mobile', ''),
+            password=secretary_data['password'],
+            role='secretary',
+            society=society,
+            is_approved=True
+        )
+
+        treasurer = CustomUser.objects.create_user(
+            username=treasurer_data['email'],
+            email=treasurer_data['email'],
+            first_name=treasurer_data.get('name', '').split()[0] if treasurer_data.get('name') else '',
+            last_name=' '.join(treasurer_data.get('name', '').split()[1:]) if treasurer_data.get('name') else '',
+            phone=treasurer_data.get('mobile', ''),
+            password=treasurer_data['password'],
+            role='treasurer',
+            society=society,
+            is_approved=True
+        )
+
+        CommitteeMember.objects.create(user=secretary, society=society, role='secretary')
+        CommitteeMember.objects.create(user=treasurer, society=society, role='treasurer')
+
+        society.is_active = True
+        society.save(update_fields=['is_active'])
+
+        log_audit(request.user, 'committee_assigned', 'Society', society.id, {
+            'society_id': society.id,
+            'secretary_id': secretary.id,
+            'treasurer_id': treasurer.id
+        }, request)
+
+        return Response({
+            'success': True,
+            'data': {
+                'society': SocietySerializer(society).data,
+                'secretary': CustomUserSerializer(secretary).data,
+                'treasurer': CustomUserSerializer(treasurer).data
+            },
+            'message': 'Committee members assigned successfully. Society is now active.'
+        }, status=status.HTTP_201_CREATED)
+
+
+class IsSecretary(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'secretary'
+
+
+class AddResidentView(generics.GenericAPIView):
+    serializer_class = AddResidentSerializer
+    permission_classes = [IsSecretary]
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        secretary = request.user
+        society = secretary.society
+
+        if CustomUser.objects.filter(email=data['email']).exists():
+            return Response({
+                'success': False,
+                'data': {},
+                'message': 'Email already exists'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if Resident.objects.filter(society=society, flat_no=data['flat_no'], wing_no=data['wing_no']).exists():
+            return Response({
+                'success': False,
+                'data': {},
+                'message': 'Flat No and Wing No combination already exists for this society'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        user = CustomUser.objects.create_user(
+            username=data['email'],
+            email=data['email'],
+            first_name=data.get('name', '').split()[0] if data.get('name') else '',
+            last_name=' '.join(data.get('name', '').split()[1:]) if data.get('name') else '',
+            phone=data.get('mobile_no', ''),
+            password=data['password'],
+            role='resident',
+            society=society,
+            is_approved=True
+        )
+
+        resident = Resident.objects.create(
+            user=user,
+            society=society,
+            flat_no=data['flat_no'],
+            wing_no=data['wing_no'],
+            mobile_no=data['mobile_no']
+        )
+
+        log_audit(request.user, 'resident_added', 'Resident', resident.id, {
+            'resident_id': resident.id,
+            'user_id': user.id,
+            'email': user.email,
+            'flat_no': data['flat_no'],
+            'wing_no': data['wing_no']
+        }, request)
+
+        return Response({
+            'success': True,
+            'data': {
+                'resident': ResidentSerializer(resident).data,
+                'user': CustomUserSerializer(user).data
+            },
+            'message': 'Resident added successfully'
+        }, status=status.HTTP_201_CREATED)
+
+
+class ResidentListView(generics.ListAPIView):
+    serializer_class = ResidentSerializer
+    permission_classes = [IsSecretary]
+
+    def get_queryset(self):
+        secretary = self.request.user
+        return Resident.objects.filter(society=secretary.society).select_related('user', 'society')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'message': ''
+        })

@@ -166,6 +166,8 @@ function handleRoleRedirect(role) {
   localStorage.setItem('panchayat_role', role);
   const routes = {
     admin: '/admin-panel/',
+    secretary: '/committee/',
+    treasurer: '/committee/',
     committee: '/committee/',
     resident: '/resident/'
   };

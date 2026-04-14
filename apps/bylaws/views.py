@@ -12,6 +12,7 @@ import logging
 from apps.ai_engine.gemini_client import call_gemini
 from apps.ai_engine.utils import extract_pdf_text
 from apps.accounts.views import log_audit
+from apps.accounts.models import Society
 from .models import Bylaw
 from .serializers import BylawSerializer, BylawAskSerializer
 
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class IsAdminOrCommittee(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in ['admin', 'committee']
+        return request.user.is_authenticated and request.user.role in ['admin', 'secretary', 'treasurer', 'committee']
 
 
 class BylawListView(generics.ListAPIView):
@@ -28,10 +29,13 @@ class BylawListView(generics.ListAPIView):
     permission_classes = [IsAdminOrCommittee]
 
     def get_queryset(self):
-        return Bylaw.objects.filter(
-            society=self.request.user.society,
-            is_active=True
-        ).select_related('uploaded_by')
+        user = self.request.user
+        if user.role == 'admin':
+            society_id = self.request.query_params.get('society_id')
+            if society_id:
+                return Bylaw.objects.filter(society_id=society_id, is_active=True).select_related('uploaded_by', 'society')
+            return Bylaw.objects.filter(is_active=True).select_related('uploaded_by', 'society')
+        return Bylaw.objects.filter(society=user.society, is_active=True).select_related('uploaded_by')
 
 
 class BylawUploadView(generics.CreateAPIView):
@@ -43,6 +47,26 @@ class BylawUploadView(generics.CreateAPIView):
         title = request.data.get('title')
         version = request.data.get('version', '1.0')
         pdf_file = request.FILES.get('pdf')
+        
+        user = request.user
+        if user.role == 'admin':
+            society_id = request.data.get('society_id')
+            if not society_id:
+                return Response({
+                    'success': False,
+                    'data': {},
+                    'message': 'Please select a society'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                society = Society.objects.get(id=society_id)
+            except Society.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'data': {},
+                    'message': 'Society not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+        else:
+            society = user.society
 
         if not pdf_file:
             return Response({
@@ -68,7 +92,7 @@ class BylawUploadView(generics.CreateAPIView):
         bylaws_dir = os.path.join(settings.MEDIA_ROOT, 'bylaws')
         os.makedirs(bylaws_dir, exist_ok=True)
         
-        filename = f"{request.user.society.id}_{pdf_file.name}"
+        filename = f"{society.id}_{pdf_file.name}"
         file_path = os.path.join(bylaws_dir, filename)
         
         with open(file_path, 'wb') as f:
@@ -89,7 +113,7 @@ class BylawUploadView(generics.CreateAPIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         bylaw = Bylaw.objects.create(
-            society=request.user.society,
+            society=society,
             title=title,
             pdf_path=f"bylaws/{filename}",
             extracted_text=extracted_text[:50000] if extracted_text else "",
@@ -121,9 +145,24 @@ class BylawAskView(APIView):
         serializer.is_valid(raise_exception=True)
 
         question = serializer.validated_data['question']
-        bylaw_id = serializer.validated_data['bylaw_id']
+        bylaw_id = serializer.validated_data.get('bylaw_id')
 
-        cache_key = f"bylaw_ask_{bylaw_id}_{question[:50]}"
+        user = request.user
+        
+        if user.role == 'admin':
+            return Response({
+                'success': False,
+                'message': 'Admin cannot ask questions about bylaws'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        society = user.society
+        if not society:
+            return Response({
+                'success': False,
+                'message': 'User is not associated with any society'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        cache_key = f"bylaw_ask_{bylaw_id or 'auto'}_{question[:50]}"
         cached = cache.get(cache_key)
         if cached:
             return Response({
@@ -133,7 +172,16 @@ class BylawAskView(APIView):
             })
 
         try:
-            bylaw = Bylaw.objects.get(id=bylaw_id, society=request.user.society, is_active=True)
+            if bylaw_id:
+                bylaw = Bylaw.objects.get(id=bylaw_id, society=society, is_active=True)
+            else:
+                bylaw = Bylaw.objects.filter(society=society, is_active=True).first()
+                
+            if not bylaw:
+                return Response({
+                    'success': False,
+                    'message': 'No bylaws found for your society'
+                }, status=status.HTTP_404_NOT_FOUND)
         except Bylaw.DoesNotExist:
             return Response({
                 'success': False,
@@ -191,7 +239,11 @@ class BylawDownloadView(APIView):
 
     def get(self, request, bylaw_id):
         try:
-            bylaw = Bylaw.objects.get(id=bylaw_id, society=request.user.society, is_active=True)
+            user = request.user
+            if user.role == 'admin':
+                bylaw = Bylaw.objects.get(id=bylaw_id, is_active=True)
+            else:
+                bylaw = Bylaw.objects.get(id=bylaw_id, society=user.society, is_active=True)
         except ObjectDoesNotExist:
             return Response({
                 'success': False,

@@ -19,7 +19,7 @@ class Society(models.Model):
     wing_count = models.IntegerField(default=1)
     total_flats = models.IntegerField()
     plan_type = models.CharField(max_length=20, choices=PLAN_TYPE_CHOICES, default='standard')
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -32,6 +32,8 @@ class Society(models.Model):
 class CustomUser(AbstractUser):
     ROLE_CHOICES = [
         ('admin', 'Admin'),
+        ('secretary', 'Secretary'),
+        ('treasurer', 'Treasurer'),
         ('committee', 'Committee'),
         ('resident', 'Resident'),
     ]
@@ -86,3 +88,38 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.action} - {self.timestamp}"
+
+
+class CommitteeMember(models.Model):
+    ROLE_CHOICES = [
+        ('secretary', 'Secretary'),
+        ('treasurer', 'Treasurer'),
+    ]
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='committee_roles')
+    society = models.ForeignKey(Society, on_delete=models.CASCADE, related_name='committee_members')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'committee_members'
+        unique_together = ['society', 'role']
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.role} - {self.society.name}"
+
+
+class Resident(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='resident_profile')
+    society = models.ForeignKey(Society, on_delete=models.CASCADE, related_name='residents')
+    flat_no = models.CharField(max_length=20)
+    wing_no = models.CharField(max_length=10)
+    mobile_no = models.CharField(max_length=15)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'residents'
+        unique_together = ['society', 'flat_no', 'wing_no']
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.flat_no}/{self.wing_no} - {self.society.name}"

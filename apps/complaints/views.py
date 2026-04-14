@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class IsAdminOrCommittee(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in ['admin', 'committee']
+        return request.user.is_authenticated and request.user.role in ['admin', 'secretary', 'treasurer', 'committee']
 
 
 class ComplaintListCreateView(generics.ListCreateAPIView):
@@ -34,12 +34,12 @@ class ComplaintListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Complaint.objects.filter(society=user.society).select_related(
-            'submitted_by', 'assigned_to'
-        )
-
         if user.role == 'resident':
-            queryset = queryset.filter(submitted_by=user)
+            queryset = Complaint.objects.filter(submitted_by=user).select_related('submitted_by', 'assigned_to')
+        elif user.role in ['admin', 'secretary', 'treasurer', 'committee']:
+            queryset = Complaint.objects.filter(society=user.society).select_related('submitted_by', 'assigned_to')
+        else:
+            queryset = Complaint.objects.filter(society=user.society).select_related('submitted_by', 'assigned_to')
 
         status_filter = self.request.query_params.get('status')
         priority_filter = self.request.query_params.get('priority')
@@ -83,7 +83,7 @@ class ComplaintDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role in ['admin', 'committee']:
+        if user.role in ['admin', 'secretary', 'treasurer', 'committee']:
             return Complaint.objects.filter(society=user.society)
         return Complaint.objects.filter(submitted_by=user)
 
@@ -117,7 +117,7 @@ class ComplaintDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance = self.get_object()
         
         # Check if user owns this complaint (only resident can delete their own)
-        if instance.submitted_by != request.user and request.user.role not in ['admin', 'committee']:
+        if instance.submitted_by != request.user and request.user.role not in ['admin', 'secretary', 'treasurer', 'committee']:
             return Response({
                 'success': False,
                 'message': 'You can only delete your own complaints'
@@ -148,7 +148,10 @@ class ComplaintNoteView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Complaint.objects.filter(society=self.request.user.society)
+        user = self.request.user
+        if user.role in ['admin', 'secretary', 'treasurer', 'committee']:
+            return Complaint.objects.filter(society=user.society)
+        return Complaint.objects.filter(submitted_by=user)
 
     def get_object(self):
         pk = self.kwargs.get('pk')

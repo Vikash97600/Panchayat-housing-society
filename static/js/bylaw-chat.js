@@ -15,11 +15,11 @@ async function loadDefaultBylaw() {
     if (data.results && data.results.length > 0) {
       currentBylawId = data.results[0].id;
     } else {
-      currentBylawId = 1;
+      currentBylawId = null;
     }
   } catch (e) {
     console.error('[BYLAW] Error loading bylaws:', e);
-    currentBylawId = 1;
+    currentBylawId = null;
   }
 }
 
@@ -52,7 +52,7 @@ function appendMessage(role, text, citation = '') {
 function sendQuestion(question, bylawId = null) {
   console.log('[BYLAW] Sending question:', question, 'bylawId:', bylawId);
   
-  const finalBylawId = bylawId || currentBylawId || 1;
+  const finalBylawId = bylawId || currentBylawId;
   appendMessage('user', question);
   
   const chatContainer = document.getElementById('bylaw-chat');
@@ -67,13 +67,18 @@ function sendQuestion(question, bylawId = null) {
   chatContainer.appendChild(loadingDiv);
   chatContainer.scrollTop = chatContainer.scrollHeight;
   
+  const requestBody = { question };
+  if (finalBylawId) {
+    requestBody.bylaw_id = finalBylawId;
+  }
+  
   fetch('/api/bylaws/ask/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${localStorage.getItem('panchayat_token')}`
     },
-    body: JSON.stringify({ question, bylaw_id: finalBylawId })
+    body: JSON.stringify(requestBody)
   })
   .then(res => res.json())
   .then(data => {

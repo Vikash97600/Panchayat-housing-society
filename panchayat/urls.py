@@ -75,7 +75,7 @@ def api_root(request):
             if (token && role) {
                 if (role === 'admin') {
                     window.location.href = '/admin-panel/';
-                } else if (role === 'committee') {
+                } else if (role === 'secretary' || role === 'treasurer' || role === 'committee') {
                     window.location.href = '/committee/';
                 } else if (role === 'resident') {
                     window.location.href = '/resident/';

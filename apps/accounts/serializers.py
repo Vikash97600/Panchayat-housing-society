@@ -1,15 +1,18 @@
 from rest_framework import serializers
-from .models import CustomUser, Society, AuditLog
+from .models import CustomUser, Society, AuditLog, CommitteeMember, Resident
 
 
 class SocietySerializer(serializers.ModelSerializer):
     class Meta:
         model = Society
         fields = '__all__'
+        read_only_fields = ['is_active']
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
     society_name = serializers.CharField(source='society.name', read_only=True)
+    flat_no = serializers.SerializerMethodField()
+    wing = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -20,6 +23,20 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         return obj.get_full_name()
+    
+    def get_flat_no(self, obj):
+        if obj.flat_no:
+            return obj.flat_no
+        if hasattr(obj, 'resident_profile') and obj.resident_profile:
+            return obj.resident_profile.flat_no
+        return None
+    
+    def get_wing(self, obj):
+        if obj.wing:
+            return obj.wing
+        if hasattr(obj, 'resident_profile') and obj.resident_profile:
+            return obj.resident_profile.wing_no
+        return None
 
 
 class CustomUserCreateSerializer(serializers.ModelSerializer):
@@ -57,6 +74,8 @@ class UserLoginSerializer(serializers.Serializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     society_name = serializers.CharField(source='society.name', read_only=True)
+    flat_no = serializers.SerializerMethodField()
+    wing = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -67,6 +86,20 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         return obj.get_full_name()
+    
+    def get_flat_no(self, obj):
+        if obj.flat_no:
+            return obj.flat_no
+        if hasattr(obj, 'resident_profile') and obj.resident_profile:
+            return obj.resident_profile.flat_no
+        return None
+    
+    def get_wing(self, obj):
+        if obj.wing:
+            return obj.wing
+        if hasattr(obj, 'resident_profile') and obj.resident_profile:
+            return obj.resident_profile.wing_no
+        return None
 
 
 class ForgotPasswordSerializer(serializers.Serializer):
@@ -105,3 +138,50 @@ class AuditLogSerializer(serializers.ModelSerializer):
     
     def get_user_name(self, obj):
         return obj.user.get_full_name() if obj.user else 'System'
+
+
+class CommitteeMemberSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+
+    class Meta:
+        model = CommitteeMember
+        fields = ['id', 'user', 'user_name', 'user_email', 'society', 'role', 'created_at']
+        read_only_fields = ['created_at']
+
+    def get_user_name(self, obj):
+        return obj.user.get_full_name() if obj.user else ''
+
+
+class AssignCommitteeSerializer(serializers.Serializer):
+    society_id = serializers.IntegerField()
+    secretary = serializers.DictField()
+    treasurer = serializers.DictField()
+
+
+class ResidentSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+
+    class Meta:
+        model = Resident
+        fields = ['id', 'user', 'user_name', 'user_email', 'society', 'flat_no', 'wing_no', 'mobile_no', 'created_at']
+        read_only_fields = ['created_at']
+
+    def get_user_name(self, obj):
+        return obj.user.get_full_name() if obj.user else ''
+
+
+class AddResidentSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    email = serializers.EmailField()
+    mobile_no = serializers.CharField()
+    flat_no = serializers.CharField()
+    wing_no = serializers.CharField()
+    password = serializers.CharField(min_length=6)
+    confirm_password = serializers.CharField()
+
+    def validate(self, data):
+        if data['password'] != data['confirm_password']:
+            raise serializers.ValidationError("Passwords do not match")
+        return data

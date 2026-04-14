@@ -259,13 +259,14 @@ async function loadUsers(role = '') {
             <div class="avatar avatar-sm">${u.first_name ? u.first_name.charAt(0).toUpperCase() : 'U'}</div>
             <div>
               <div class="font-semibold">${u.full_name || u.first_name || '-'}</div>
-              <small class="text-muted">${u.flat_no ? 'Flat ' + u.flat_no : ''}</small>
+              <small class="text-muted">${u.flat_no ? 'Flat ' + u.flat_no + (u.wing ? '/' + u.wing : '') : ''}</small>
             </div>
           </div>
         </td>
         <td>${u.email}</td>
-        <td><span class="badge badge-${u.role === 'admin' ? 'danger' : u.role === 'committee' ? 'warning' : 'info'}">${u.role}</span></td>
-        <td>${u.flat_no || '-'}</td>
+        <td><span class="badge badge-${u.role === 'admin' ? 'danger' : u.role === 'secretary' || u.role === 'treasurer' ? 'warning' : u.role === 'committee' ? 'warning' : 'info'}">${u.role}</span></td>
+        <td>${u.society_name || '-'}</td>
+        <td>${u.flat_no ? u.flat_no + (u.wing ? '/' + u.wing : '') : '-'}</td>
         <td>${u.is_approved ? '<span class="badge badge-success">Approved</span>' : '<span class="badge badge-warning">Pending</span>'}</td>
         <td>
           ${!u.is_approved ? `<button class="btn btn-sm btn-success" onclick="approveUser(${u.id})">
@@ -276,7 +277,7 @@ async function loadUsers(role = '') {
     `).join('');
   } catch (e) {
     console.error('Users load error:', e);
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Failed to load users</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Failed to load users</td></tr>';
   }
 }
 
@@ -323,17 +324,21 @@ async function saveUser() {
 // Bylaws
 async function loadBylaws() {
   const tbody = document.getElementById('bylaws-tbody');
-  tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="spinner"></div></td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner"></div></td></tr>';
+  
+  const societySelect = document.getElementById('bylaw-society');
+  const selectedSociety = societySelect?.value;
+  const queryParam = selectedSociety ? `?society_id=${selectedSociety}` : '';
   
   try {
-    const res = await api.get('/bylaws/');
+    const res = await api.get('/bylaws/' + queryParam);
     const data = await res.json();
-    const bylaws = data.results || [];
+    const bylaws = data.results || data || [];
     
     if (bylaws.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="4" class="text-center text-muted py-4">
+          <td colspan="5" class="text-center text-muted py-4">
             <div class="empty-state">
               <i class="fas fa-file-pdf empty-state-icon"></i>
               <h4>No Bylaws</h4>
@@ -348,6 +353,7 @@ async function loadBylaws() {
     tbody.innerHTML = bylaws.map(b => `
       <tr>
         <td>${b.title}</td>
+        <td>${b.society_name || 'N/A'}</td>
         <td>v${b.version}</td>
         <td>${formatDate(b.uploaded_at)}</td>
         <td>
@@ -358,7 +364,7 @@ async function loadBylaws() {
       </tr>
     `).join('');
   } catch (e) {
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-4">Failed to load bylaws</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">Failed to load bylaws</td></tr>';
   }
 }
 
@@ -369,10 +375,18 @@ async function uploadBylaw() {
     return;
   }
   
+  const societySelect = document.getElementById('bylaw-society');
+  const societyId = societySelect?.value;
+  if (!societyId) {
+    showToast('Please select a society', 'error');
+    return;
+  }
+  
   const formData = new FormData();
   formData.append('title', document.getElementById('bylaw-title').value);
   formData.append('version', document.getElementById('bylaw-version').value);
   formData.append('pdf', file);
+  formData.append('society_id', societyId);
   
   const btn = document.querySelector('#bylawModal .btn-primary');
   setButtonLoading(btn, true);
@@ -1025,6 +1039,32 @@ document.getElementById('societyModal')?.addEventListener('hidden.bs.modal', fun
   document.querySelector('#societyModal .btn-primary').innerHTML = '<i class="fas fa-save me-2"></i>Save Society';
 });
 
+// Populate societies for bylaw upload
+async function populateBylawSocieties() {
+  try {
+    const res = await api.get('/auth/societies/');
+    const result = await res.json();
+    const societies = result.data || [];
+    
+    const select = document.getElementById('bylaw-society');
+    if (select) {
+      select.innerHTML = '<option value="">-- Select Society --</option>' +
+        societies.map(s => `<option value="${s.id}">${s.name} (${s.city})</option>`).join('');
+    }
+  } catch (e) {
+    console.error('Error loading societies:', e);
+  }
+}
+
+// Add event listener for bylaw modal
+document.getElementById('bylawModal')?.addEventListener('shown.bs.modal', function() {
+  populateBylawSocieties();
+});
+
+document.getElementById('bylaw-society')?.addEventListener('change', function() {
+  loadBylaws();
+});
+
 // Approve User
 async function approveUser(userId) {
   try {
@@ -1063,6 +1103,70 @@ window.bulkUpdateServices = bulkUpdateServices;
 window.saveSociety = saveSociety;
 window.editSociety = editSociety;
 window.approveUser = approveUser;
+window.assignCommittee = assignCommittee;
+
+// ============================================
+// Committee Management
+// ============================================
+async function loadCommitteeSocieties() {
+  try {
+    const res = await api.get('/auth/societies/');
+    const result = await res.json();
+    
+    if (result.success && result.data) {
+      const inactiveSocieties = result.data.filter(s => s.is_active === false);
+      const select = document.getElementById('committee-society');
+      select.innerHTML = '<option value="">-- Select Society --</option>' +
+        inactiveSocieties.map(s => `<option value="${s.id}">${s.name} (${s.city})</option>`).join('');
+    }
+  } catch (e) {
+    console.error('Error loading societies:', e);
+  }
+}
+
+async function assignCommittee() {
+  const data = {
+    society_id: parseInt(document.getElementById('committee-society').value),
+    secretary: {
+      name: document.getElementById('secretary-name').value,
+      email: document.getElementById('secretary-email').value,
+      mobile: document.getElementById('secretary-mobile').value,
+      password: document.getElementById('secretary-password').value
+    },
+    treasurer: {
+      name: document.getElementById('treasurer-name').value,
+      email: document.getElementById('treasurer-email').value,
+      mobile: document.getElementById('treasurer-mobile').value,
+      password: document.getElementById('treasurer-password').value
+    }
+  };
+  
+  if (!data.society_id) {
+    showToast('Please select a society', 'error');
+    return;
+  }
+  
+  const btn = document.querySelector('#committee-form .btn-primary');
+  setButtonLoading(btn, true);
+  
+  try {
+    const res = await api.post('/auth/committee/assign/', data);
+    const result = await res.json();
+    
+    if (result.success) {
+      showToast('Committee assigned successfully! Society is now active.', 'success');
+      document.getElementById('committee-form').reset();
+      loadSocieties();
+      loadCommitteeSocieties();
+    } else {
+      showToast(result.message || 'Failed to assign committee', 'error');
+    }
+  } catch (e) {
+    showToast('Error assigning committee', 'error');
+  }
+  
+  setButtonLoading(btn, false);
+}
 
 // ============================================
 // Profile Management
@@ -1231,6 +1335,8 @@ document.addEventListener('DOMContentLoaded', () => {
     originalSwitchTab(tabId);
     if (tabId === 'profile') {
       loadProfile();
+    } else if (tabId === 'committee') {
+      loadCommitteeSocieties();
     }
   };
 
@@ -1238,5 +1344,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const activeTab = activeTabLink?.dataset?.tab || document.getElementById('tab-profile')?.classList.contains('active') && 'profile';
   if (activeTab === 'profile') {
     loadProfile();
+  } else if (activeTab === 'committee') {
+    loadCommitteeSocieties();
   }
 });

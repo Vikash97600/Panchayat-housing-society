@@ -14,8 +14,8 @@ class ComplaintNoteSerializer(serializers.ModelSerializer):
 class ComplaintListSerializer(serializers.ModelSerializer):
     submitted_by_name = serializers.CharField(source='submitted_by.full_name', read_only=True)
     assigned_to_name = serializers.SerializerMethodField()
-    flat_no = serializers.CharField(source='submitted_by.flat_no', read_only=True)
-    wing = serializers.CharField(source='submitted_by.wing', read_only=True)
+    flat_no = serializers.SerializerMethodField()
+    wing = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
     can_delete = serializers.SerializerMethodField()
 
@@ -30,12 +30,26 @@ class ComplaintListSerializer(serializers.ModelSerializer):
             return obj.assigned_to.get_full_name() or obj.assigned_to.email
         return None
 
+    def get_flat_no(self, obj):
+        if obj.submitted_by.flat_no:
+            return obj.submitted_by.flat_no
+        if hasattr(obj.submitted_by, 'resident_profile') and obj.submitted_by.resident_profile:
+            return obj.submitted_by.resident_profile.flat_no
+        return None
+    
+    def get_wing(self, obj):
+        if obj.submitted_by.wing:
+            return obj.submitted_by.wing
+        if hasattr(obj.submitted_by, 'resident_profile') and obj.submitted_by.resident_profile:
+            return obj.submitted_by.resident_profile.wing_no
+        return None
+
     def get_can_edit(self, obj):
         request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return False
         user = request.user
-        if user.role in ['admin', 'committee']:
+        if user.role in ['admin', 'secretary', 'treasurer', 'committee']:
             return True
         return obj.submitted_by == user and obj.status not in ['resolved', 'closed']
 
@@ -44,7 +58,7 @@ class ComplaintListSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return False
         user = request.user
-        if user.role in ['admin', 'committee']:
+        if user.role in ['admin', 'secretary', 'treasurer', 'committee']:
             return True
         return obj.submitted_by == user and obj.status == 'open'
 
@@ -63,8 +77,8 @@ class ComplaintCreateSerializer(serializers.ModelSerializer):
 class ComplaintDetailSerializer(serializers.ModelSerializer):
     submitted_by_name = serializers.CharField(source='submitted_by.full_name', read_only=True)
     assigned_to_name = serializers.SerializerMethodField()
-    flat_no = serializers.CharField(source='submitted_by.flat_no', read_only=True)
-    wing = serializers.CharField(source='submitted_by.wing', read_only=True)
+    flat_no = serializers.SerializerMethodField()
+    wing = serializers.SerializerMethodField()
     notes = ComplaintNoteSerializer(many=True, read_only=True)
     can_edit = serializers.SerializerMethodField()
     can_delete = serializers.SerializerMethodField()
@@ -82,12 +96,26 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
             return obj.assigned_to.get_full_name() or obj.assigned_to.email
         return None
 
+    def get_flat_no(self, obj):
+        if obj.submitted_by.flat_no:
+            return obj.submitted_by.flat_no
+        if hasattr(obj.submitted_by, 'resident_profile') and obj.submitted_by.resident_profile:
+            return obj.submitted_by.resident_profile.flat_no
+        return None
+    
+    def get_wing(self, obj):
+        if obj.submitted_by.wing:
+            return obj.submitted_by.wing
+        if hasattr(obj.submitted_by, 'resident_profile') and obj.submitted_by.resident_profile:
+            return obj.submitted_by.resident_profile.wing_no
+        return None
+
     def get_can_edit(self, obj):
         request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return False
         user = request.user
-        if user.role in ['admin', 'committee']:
+        if user.role in ['admin', 'secretary', 'treasurer', 'committee']:
             return True
         return obj.submitted_by == user and obj.status not in ['resolved', 'closed']
 
@@ -96,7 +124,7 @@ class ComplaintDetailSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return False
         user = request.user
-        if user.role in ['admin', 'committee']:
+        if user.role in ['admin', 'secretary', 'treasurer', 'committee']:
             return True
         return obj.submitted_by == user and obj.status == 'open'
 

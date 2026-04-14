@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('panchayat_user', JSON.stringify(data.data.user));
         localStorage.setItem('panchayat_role', data.data.user.role);
         
-        console.log('Login user data:', data.data.user);
+        console.log('Login successful! Role:', data.data.user.role, 'Full user data:', data.data.user);
         
         showToast('Login successful! Welcome back, ' + (data.data.user.first_name || data.data.user.full_name || 'User') + '!', 'success');
         
@@ -249,18 +249,17 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelector('.login-card').classList.add('animate__fadeOut');
         
         setTimeout(() => {
-          switch (data.data.user.role) {
-            case 'admin':
-              window.location.href = '/admin-panel/';
-              break;
-            case 'committee':
-              window.location.href = '/committee/';
-              break;
-            case 'resident':
-              window.location.href = '/resident/';
-              break;
-            default:
-              window.location.href = '/login/';
+          console.log('Redirecting with role:', data.data.user.role);
+          const role = data.data.user.role;
+          if (role === 'admin') {
+            window.location.href = '/admin-panel/';
+          } else if (role === 'secretary' || role === 'treasurer' || role === 'committee') {
+            window.location.href = '/committee/';
+          } else if (role === 'resident') {
+            window.location.href = '/resident/';
+          } else {
+            console.log('Unknown role, staying on login page');
+            window.location.href = '/login/';
           }
         }, 500);
       } else {
