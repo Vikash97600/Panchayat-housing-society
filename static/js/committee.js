@@ -694,6 +694,8 @@ async function loadMaintenance() {
         breakdownMap[b.category] = b.amount;
       });
       
+      const total = data.data.total || 0;
+      
       const categoryToInput = {
         'Staff Salaries': 'maintenance-staff-salaries',
         'Lift AMC': 'maintenance-lift-amc',
@@ -713,7 +715,10 @@ async function loadMaintenance() {
       
       tbody.innerHTML = data.data.breakdown.map(b => `
         <tr><td>${b.category}</td><td>₹${b.amount.toLocaleString()}</td></tr>
-      `).join('') + `<tr><td><strong>Total</strong></td><td><strong>₹${data.data.total.toLocaleString()}</strong></td></tr>`;
+      `).join('') + `<tr class="table-primary"><td><strong>Total</strong></td><td><strong>₹${total.toLocaleString()}</strong></td></tr>`;
+      
+      const totalEl = document.getElementById('maintenance-total');
+      if (totalEl) totalEl.textContent = '₹' + total.toLocaleString();
 
       const aiCard = document.getElementById('maintenance-ai');
       if (aiCard && data.data.ai_summary) {
@@ -722,10 +727,33 @@ async function loadMaintenance() {
       }
     } else {
       tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted py-4">No maintenance data for this month</td></tr>';
+      
+      const totalEl = document.getElementById('maintenance-total');
+      if (totalEl) totalEl.textContent = '₹0';
+      
+      const aiCard = document.getElementById('maintenance-ai');
+      if (aiCard) {
+        aiCard.style.display = 'block';
+        document.getElementById('maintenance-ai-text').textContent = `Total maintenance for ${month || 'selected month'}: ₹0. No expenses recorded.`;
+      }
+      
+      const inputIds = ['maintenance-staff-salaries', 'maintenance-lift-amc', 'maintenance-generator-fuel', 'maintenance-water-charges', 'maintenance-sinking-fund', 'maintenance-garden'];
+      inputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
     }
   } catch (e) {
     console.error('Maintenance load error:', e);
     tbody.innerHTML = '<tr><td colspan="2" class="text-center text-danger py-4">Failed to load maintenance data</td></tr>';
+    
+    const totalEl = document.getElementById('maintenance-total');
+    if (totalEl) totalEl.textContent = '₹0';
+    
+    const aiCard = document.getElementById('maintenance-ai');
+    if (aiCard) {
+      aiCard.style.display = 'none';
+    }
   }
 }
 
@@ -760,6 +788,9 @@ document.getElementById('maintenance-form')?.addEventListener('submit', async (e
     if (result.success) {
       showToast(result.message || 'Maintenance saved successfully', 'success');
       loadMaintenance();
+      if (typeof loadDues === 'function') {
+        loadDues();
+      }
     } else {
       showToast(result.message || 'Failed to save maintenance', 'error');
     }

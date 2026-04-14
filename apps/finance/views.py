@@ -32,7 +32,7 @@ DEFAULT_MAINTENANCE_CATEGORIES = [
 
 class IsAdminOrCommittee(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in ['admin', 'committee']
+        return request.user.is_authenticated and request.user.role in ['admin', 'secretary', 'treasurer', 'committee']
 
 
 def ensure_maintenance_categories(society):
@@ -50,7 +50,10 @@ class MaintenanceCategoryListView(generics.ListAPIView):
     permission_classes = [IsAdminOrCommittee]
 
     def get_queryset(self):
-        return MaintenanceCategory.objects.filter(society=self.request.user.society)
+        user = self.request.user
+        if user.role == 'admin':
+            return MaintenanceCategory.objects.filter(society=user.society)
+        return MaintenanceCategory.objects.filter(society=user.society)
 
 
 class MaintenanceLedgerListView(generics.ListCreateAPIView):
@@ -63,15 +66,20 @@ class MaintenanceLedgerListView(generics.ListCreateAPIView):
         return MaintenanceLedgerSerializer
 
     def get_queryset(self):
-        month_param = self.kwargs.get('month')
-        queryset = MaintenanceLedger.objects.filter(society=self.request.user.society)
+        user = self.request.user
+        if user.role == 'admin':
+            queryset = MaintenanceLedger.objects.filter(society=user.society)
+        else:
+            queryset = MaintenanceLedger.objects.filter(society=user.society)
+        
+        month_param = self.request.query_params.get('month')
         if month_param:
             try:
                 month_date = datetime.strptime(month_param, '%Y-%m').date().replace(day=1)
                 queryset = queryset.filter(month=month_date)
             except ValueError:
                 pass
-        return queryset.select_related('category')
+        return queryset.select_related('category', 'society')
 
     def perform_create(self, serializer):
         serializer.save(society=self.request.user.society)
@@ -259,40 +267,47 @@ class MaintenanceBulkSaveView(APIView):
         total = sum(e['amount'] for e in saved_entries)
 
         # Generate dues for all residents
-        residents = CustomUser.objects.filter(
-            society=request.user.society,
-            role='resident'
-        )
+        # Include both CustomUser with role='resident' and Resident profiles
+        from apps.accounts.models import Resident
+        resident_profiles = Resident.objects.filter(society=request.user.society)
+        resident_users = CustomUser.objects.filter(society=request.user.society, role='resident')
         
-        flat_count = residents.count()
+        # Get all unique residents from both sources
+        all_residents = set()
+        for profile in resident_profiles:
+            all_residents.add(profile.user_id)
+        for user in resident_users:
+            all_residents.add(user.id)
+        
+        flat_count = len(all_residents)
         created_dues = 0
+        
         if flat_count > 0 and total > 0:
             per_flat_amount = round(total / flat_count, 2)
             
-            for resident in residents:
+            # Create dues for all residents
+            for profile in resident_profiles:
                 Due.objects.update_or_create(
-                    resident=resident,
+                    resident=profile.user,
                     society=request.user.society,
                     month=month_date,
                     defaults={'amount': per_flat_amount, 'is_paid': False}
                 )
                 created_dues += 1
+            
+            for user in resident_users:
+                # Skip if already created via Resident profile
+                if user.id not in [p.user_id for p in resident_profiles]:
+                    Due.objects.update_or_create(
+                        resident=user,
+                        society=request.user.society,
+                        month=month_date,
+                        defaults={'amount': per_flat_amount, 'is_paid': False}
+                    )
+                    created_dues += 1
 
         # Clear cache
         cache.delete(f"maintenance_summary_{request.user.society.id}_{month_str}")
-
-        return Response({
-            'success': True,
-            'message': f'Maintenance saved. {created_dues} dues generated for {flat_count} flats.',
-            'data': {
-                'month': month_str,
-                'entries': saved_entries,
-                'total': total,
-                'dues_created': created_dues,
-                'flat_count': flat_count,
-                'per_flat_amount': round(total / flat_count, 2) if flat_count > 0 else 0
-            }
-        })
 
         return Response({
             'success': True,

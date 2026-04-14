@@ -180,10 +180,10 @@ class CreateChatRoomSerializer(serializers.ModelSerializer):
         current_user = request.user
         
         # Validate role combination - allow resident <-> committee chat
-        if current_user.role == 'resident' and user.role not in ['committee']:
+        if current_user.role == 'resident' and user.role not in ['secretary', 'treasurer', 'committee']:
             raise serializers.ValidationError("Residents can only chat with committee members")
         
-        if current_user.role == 'committee' and user.role not in ['resident']:
+        if current_user.role in ['secretary', 'treasurer', 'committee'] and user.role not in ['resident']:
             raise serializers.ValidationError("Committee members can only chat with residents")
         
         if current_user.role == 'admin':
@@ -202,6 +202,9 @@ class CreateChatRoomSerializer(serializers.ModelSerializer):
         if current_user.role == 'resident':
             resident = current_user
             committee = other_user
+        elif current_user.role in ['secretary', 'treasurer', 'committee']:
+            resident = other_user
+            committee = current_user
         else:
             resident = other_user
             committee = current_user

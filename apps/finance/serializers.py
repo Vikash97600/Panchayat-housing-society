@@ -25,7 +25,7 @@ class MaintenanceLedgerCreateSerializer(serializers.ModelSerializer):
 
 class DueSerializer(serializers.ModelSerializer):
     resident_name = serializers.SerializerMethodField()
-    flat_no = serializers.CharField(source='resident.flat_no', read_only=True)
+    flat_no = serializers.SerializerMethodField()
     flat_info = serializers.SerializerMethodField()
 
     class Meta:
@@ -39,9 +39,28 @@ class DueSerializer(serializers.ModelSerializer):
             return obj.resident.get_full_name() or obj.resident.email
         return 'Unknown'
 
+    def get_flat_no(self, obj):
+        if obj.resident:
+            if obj.resident.flat_no:
+                return obj.resident.flat_no
+            if hasattr(obj.resident, 'resident_profile') and obj.resident.resident_profile:
+                return obj.resident.resident_profile.flat_no
+        return None
+
     def get_flat_info(self, obj):
-        if obj.resident and obj.resident.flat_no and obj.resident.wing:
-            return f"Flat {obj.resident.flat_no}, Wing {obj.resident.wing}"
+        flat_no = None
+        wing = None
+        
+        if obj.resident:
+            if obj.resident.flat_no:
+                flat_no = obj.resident.flat_no
+                wing = obj.resident.wing
+            elif hasattr(obj.resident, 'resident_profile') and obj.resident.resident_profile:
+                flat_no = obj.resident.resident_profile.flat_no
+                wing = obj.resident.resident_profile.wing_no
+        
+        if flat_no:
+            return f"Flat {flat_no}" + (f", Wing {wing}" if wing else "")
         return None
 
 

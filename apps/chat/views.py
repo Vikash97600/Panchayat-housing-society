@@ -18,7 +18,7 @@ class IsChatUser(permissions.BasePermission):
     
     def has_permission(self, request, view):
         user = request.user
-        return user and user.is_authenticated and user.role in ['resident', 'committee']
+        return user and user.is_authenticated and user.role in ['resident', 'secretary', 'treasurer', 'committee']
 
 
 class ChatRoomListView(generics.ListAPIView):
@@ -77,12 +77,27 @@ class GetChatUsersView(APIView):
                 'message': 'User has no society assigned'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Get both committee members and residents in the same society
-        users = CustomUser.objects.filter(
-            society=user.society,
-            is_active=True,
-            is_approved=True
-        ).exclude(id=user.id)
+        # Committee members (secretary, treasurer) can chat with residents
+        if user.role in ['secretary', 'treasurer', 'committee']:
+            users = CustomUser.objects.filter(
+                society=user.society,
+                role='resident',
+                is_active=True,
+                is_approved=True
+            ).exclude(id=user.id)
+        # Residents can chat with committee members
+        elif user.role == 'resident':
+            users = CustomUser.objects.filter(
+                society=user.society,
+                role__in=['secretary', 'treasurer', 'committee'],
+                is_active=True,
+                is_approved=True
+            ).exclude(id=user.id)
+        else:
+            return Response({
+                'success': False,
+                'message': 'Chat not available for this role'
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         serializer = UserProfileSerializer(users, many=True)
         return Response({
