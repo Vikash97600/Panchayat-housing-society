@@ -880,6 +880,7 @@
             
             <div class="sidebar-section-title">Features</div>
             <a href="#authentication"><i class="fas fa-lock"></i> Authentication</a>
+            <a href="#society-workflow"><i class="fas fa-user-shield"></i> Society Setup</a>
             <a href="#complaints"><i class="fas fa-ticket-alt"></i> Complaints</a>
             <a href="#bylaws"><i class="fas fa-gavel"></i> Bylaw Bot</a>
             <a href="#services"><i class="fas fa-tools"></i> Services</a>
@@ -1123,6 +1124,75 @@
                 <div class="callout callout-warning">
                     <div class="callout-title"><i class="fas fa-exclamation-triangle"></i> Note</div>
                     <div>New registrations require admin approval before the user can login. Until approved, login attempts return "Account not approved yet".</div>
+                </div>
+            </section>
+
+            <section id="society-workflow">
+                <div class="section-header">
+                    <h2><i class="fas fa-building me-2"></i>3B. Society Setup Workflow</h2>
+                </div>
+
+                <h3>New Workflow: Society Activation</h3>
+                <p>The system now implements a controlled onboarding flow to ensure proper society initialization:</p>
+
+                <ol class="step-list">
+                    <li>Admin logs in and seeds the society (via management command)</li>
+                    <li>Society is created with <code>is_active: False</code> — residents cannot be added yet</li>
+                    <li>Admin assigns committee members (Secretary & Treasurer) via Admin Panel</li>
+                    <li>Society automatically becomes <code>is_active: True</code></li>
+                    <li>Secretary can now add residents to the society</li>
+                </ol>
+
+                <div class="callout callout-success">
+                    <div class="callout-title"><i class="fas fa-check-circle"></i> Why This Workflow?</div>
+                    <div>This ensures only legitimate committee members can add residents, preventing unauthorized registrations and maintaining proper society governance.</div>
+                </div>
+
+                <h3>Assign Committee Members (Admin)</h3>
+                <p>Endpoint: <code>POST /api/auth/assign-committee/</code></p>
+                <p>Request body:</p>
+                <pre>{
+  "society_id": 1,
+  "secretary": {
+    "email": "secretary@splendour.com",
+    "name": "John Secretary",
+    "mobile": "9876543210",
+    "password": "Committee@123"
+  },
+  "treasurer": {
+    "email": "treasurer@splendour.com", 
+    "name": "Jane Treasurer",
+    "mobile": "9876543211",
+    "password": "Committee@123"
+  }
+}</pre>
+                <p>On success:</p>
+                <ul>
+                    <li>Secretary and Treasurer users created</li>
+                    <li>CommitteeMember records created</li>
+                    <li>Society <code>is_active</code> set to <code>True</code></li>
+                    <li>Audit log entries created</li>
+                </ul>
+
+                <h3>Add Resident (Secretary Only)</h3>
+                <p>Endpoint: <code>POST /api/auth/add-resident/</code></p>
+                <p>Only the Secretary can add residents. Public registration is disabled.</p>
+                <pre>{
+  "email": "resident@example.com",
+  "name": "New Resident",
+  "mobile_no": "9876543212",
+  "password": "Resident@123",
+  "flat_no": "101",
+  "wing_no": "A"
+}</pre>
+
+                <div class="callout callout-info">
+                    <div class="callout-title"><i class="fas fa-info-circle"></i> Key Changes</div>
+                    <ul class="mb-0">
+                        <li>Public <code>/register/</code> page is disabled — only Secretary can add residents</li>
+                        <li>Residents added by Secretary are auto-approved</li>
+                        <li>Society must be active before residents can be added</li>
+                    </ul>
                 </div>
             </section>
             
@@ -2482,8 +2552,8 @@
                 </ul>
                 
                 <h3>Step 1: Create Project</h3>
-                <pre>git clone https://github.com/Vikash97600/Panchayat-society-app.git
-cd Panchayat-society-app</pre>
+                <pre>git clone https://github.com/Vikash97600/Panchayat-housing-society.git
+cd Panchayat-housing-society-main</pre>
                 
                 <h3>Step 2: Create Virtual Environment</h3>
                 <pre>python -m venv venv
@@ -2554,16 +2624,6 @@ http://127.0.0.1:8000</pre>
                         <span class="role">Committee</span>
                         <span class="email">treasurer@splendour.com</span>
                         <span class="password">Committee@123</span>
-                    </div>
-                    <div class="credential-item">
-                        <span class="role">Resident</span>
-                        <span class="email">resident1@panchayat.com</span>
-                        <span class="password">Resident@123</span>
-                    </div>
-                    <div class="credential-item">
-                        <span class="role">Resident</span>
-                        <span class="email">resident2@panchayat.com</span>
-                        <span class="password">Resident@123</span>
                     </div>
                 </div>
                 
@@ -2672,7 +2732,7 @@ http://127.0.0.1:8000</pre>
                     <h2><i class="fas fa-folder-tree me-2"></i>15. Project File Structure</h2>
                 </div>
                 
-                <pre class="code-wrap">Panchayat-society-app/
+                <pre class="code-wrap">Panchayat-housing-society-main/
 ├── .env                          ← Secret keys (never commit)
 ├── manage.py                    ← Django management commands
 ├── requirements.txt             ← Python dependencies

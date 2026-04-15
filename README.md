@@ -91,6 +91,12 @@
 - Accessible from the **Chat** tab in both Committee and Resident dashboards
 - Real-time message updates with visual indicators
 
+### 🏢 Society Setup Workflow (New)
+- Society created with `is_active: False` initially
+- Admin assigns Secretary & Treasurer → Society auto-activates
+- Only Secretary can add residents (no public registration)
+- Controlled onboarding ensures proper governance
+
 ---
 
 ## 🛠️ Tech Stack
@@ -133,6 +139,8 @@ Three roles: **Admin**, **Committee**, **Resident**
 | View audit logs | ✅ | ❌ | ❌ |
 | Chat with residents | ❌ | ✅ | ✅ |
 | Chat with committee | ❌ | ✅ | ✅ |
+| Assign committee | ✅ | ❌ | ❌ |
+| Add residents | ❌ | ✅ (Secretary only) | ❌ |
 
 **Access URLs:**
 - Admin → `/admin-panel/`
@@ -248,6 +256,8 @@ After seeding, use these credentials to log in:
 
 > **Note:** New registrations require admin approval before the user can log in. Until approved, login returns *"Account not approved yet"*.
 
+> **New Workflow:** After seeding, the society is inactive. Admin must go to Admin Panel → Societies → Assign Committee to add Secretary & Treasurer. Once assigned, the society becomes active and the Secretary can add residents.
+
 ---
 
 ## 📡 API Reference
@@ -264,6 +274,8 @@ All APIs use JWT authentication. Token is stored in `localStorage` after login.
 | `/api/auth/me/` | `GET` | Get current user profile |
 | `/api/auth/users/` | `GET` | List all users (Admin/Committee) |
 | `/api/auth/users/<id>/approve/` | `PUT` | Approve user registration |
+| `/api/auth/assign-committee/` | `POST` | Assign Secretary & Treasurer (Admin) |
+| `/api/auth/add-resident/` | `POST` | Add resident (Secretary only) |
 
 ### Complaints
 
@@ -336,7 +348,11 @@ All APIs use JWT authentication. Token is stored in `localStorage` after login.
 
 **`societies`** — `id`, `name`, `address`, `city`, `state`, `wing_count`, `total_flats`, `plan_type`, `is_active`, `created_at`
 
-**`users` (CustomUser)** — `id`, `username`, `email`, `password`, `role` (admin/committee/resident), `flat_no`, `wing`, `phone`, `society_id`, `is_approved`, `is_active`, `created_at`
+**`users` (CustomUser)** — `id`, `username`, `email`, `password`, `role` (admin/secretary/treasurer/committee/resident), `flat_no`, `wing`, `phone`, `society_id`, `is_approved`, `is_active`, `created_at`
+
+**`committee_members`** — `id`, `user_id`, `society_id`, `role` (secretary/treasurer), `created_at`
+
+**`residents`** — `id`, `user_id` (OneToOne), `society_id`, `flat_no`, `wing_no`, `mobile_no`, `created_at`
 
 **`complaints`** — `id`, `society_id`, `submitted_by_id`, `title`, `description`, `audio_file_path`, `ai_transcript`, `language`, `category`, `priority` (low/medium/urgent), `status` (open/in_progress/resolved/closed), `assigned_to_id`, `created_at`, `updated_at`
 
