@@ -291,13 +291,14 @@ class BookingListCreateView(generics.ListCreateAPIView):
             
             if society:
                 queryset = Booking.objects.filter(
-                    slot__service__society=society
+                    resident__society=society
                 ).select_related('resident', 'slot__service', 'slot__service__society')
             else:
                 queryset = Booking.objects.none()
         else:
             queryset = Booking.objects.filter(
-                slot__service__is_active=True
+                slot__service__is_active=True,
+                resident__society=user.society
             ).select_related('resident', 'slot__service', 'slot__service__society')
 
         # Filter by service
@@ -355,7 +356,9 @@ class BookingDetailView(generics.RetrieveUpdateAPIView):
                     pass
             
             if society:
-                return Booking.objects.filter(slot__service__society=society)
+                return Booking.objects.filter(
+                    resident__society=society
+                )
             return Booking.objects.none()
         return Booking.objects.filter(resident=user)
 
@@ -365,6 +368,21 @@ class BookingDetailView(generics.RetrieveUpdateAPIView):
         if instance.status == 'cancelled':
             instance.slot.is_available = True
             instance.slot.save(update_fields=['is_available'])
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=kwargs.get('partial', False))
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        # Refresh the instance to get updated data
+        instance.refresh_from_db()
+
+        return Response({
+            'success': True,
+            'data': BookingSerializer(instance, context={'request': request}).data,
+            'message': 'Booking updated'
+        })
 
 
 class BookingCancelView(generics.UpdateAPIView):
@@ -382,7 +400,9 @@ class BookingCancelView(generics.UpdateAPIView):
                     pass
             
             if society:
-                return Booking.objects.filter(slot__service__society=society)
+                return Booking.objects.filter(
+                    resident__society=society
+                )
             return Booking.objects.none()
         return Booking.objects.filter(resident=user)
 
