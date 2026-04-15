@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.utils import timezone
+from django.db import transaction
 from datetime import timedelta
 import uuid
 
@@ -228,7 +229,7 @@ class SocietyListCreateView(generics.ListCreateAPIView):
         }, status=status.HTTP_201_CREATED)
 
 
-class SocietyDetailView(generics.RetrieveUpdateAPIView):
+class SocietyDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Society.objects.all()
     serializer_class = SocietySerializer
     permission_classes = [IsAdmin]
@@ -255,6 +256,21 @@ class SocietyDetailView(generics.RetrieveUpdateAPIView):
             'success': True,
             'data': serializer.data,
             'message': 'Society updated successfully'
+        })
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        society_name = instance.name
+        society_id = instance.id
+        
+        with transaction.atomic():
+            instance.delete()
+        
+        log_audit(request.user, 'society_deleted', 'Society', society_id, {'name': society_name}, request)
+        
+        return Response({
+            'success': True,
+            'message': f'Society "{society_name}" and all related data deleted successfully'
         })
 
 

@@ -150,9 +150,14 @@ async function loadSocieties() {
         <td><span class="badge badge-${s.plan_type === 'premium' ? 'primary' : s.plan_type === 'standard' ? 'warning' : 'info'}">${s.plan_type || 'N/A'}</span></td>
         <td><span class="badge badge-${s.is_active ? 'success' : 'secondary'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
         <td>
-          <button class="btn btn-sm btn-outline-primary" onclick="editSociety(${s.id})" data-society-id="${s.id}" title="Edit Society">
-            <i class="fas fa-edit"></i> Edit
-          </button>
+          <div class="btn-group" role="group">
+            <button class="btn btn-sm btn-outline-primary" onclick="editSociety(${s.id})" data-society-id="${s.id}" title="Edit Society">
+              <i class="fas fa-edit"></i> Edit
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteSociety(${s.id}, '${s.name.replace(/'/g, "\\'")}')" data-society-id="${s.id}" title="Delete Society">
+              <i class="fas fa-trash"></i> Delete
+            </button>
+          </div>
         </td>
       </tr>
     `).join('');
@@ -222,6 +227,39 @@ async function editSociety(societyId) {
       editBtn.disabled = false;
       editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit';
     }
+  }
+}
+
+async function deleteSociety(societyId, societyName) {
+  if (!confirm(`Are you sure you want to permanently delete "${societyName}"?\n\nThis will also delete:\n- All committee members (Secretary, Treasurer)\n- All residents\n- All bylaws\n- All services and bookings\n- All notices\n- All complaints\n- All maintenance records\n\nThis action cannot be undone!`)) {
+    return;
+  }
+  
+  const btn = document.activeElement;
+  const originalHtml = btn ? btn.innerHTML : '<i class="fas fa-trash"></i> Delete';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  }
+  
+  try {
+    const res = await api.delete(`/auth/societies/${societyId}/`);
+    const result = await res.json();
+    
+    if (res.ok && result.success) {
+      showToast(result.message || 'Society deleted successfully', 'success');
+      loadSocieties();
+    } else {
+      showToast(result.message || 'Failed to delete society', 'error');
+    }
+  } catch (e) {
+    console.error('[ADMIN] Error deleting society:', e);
+    showToast('Error deleting society', 'error');
+  }
+  
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
   }
 }
 
@@ -1166,6 +1204,7 @@ window.bulkUpdateServices = bulkUpdateServices;
 window.generateSlots = generateSlots;
 window.saveSociety = saveSociety;
 window.editSociety = editSociety;
+window.deleteSociety = deleteSociety;
 window.approveUser = approveUser;
 window.assignCommittee = assignCommittee;
 
