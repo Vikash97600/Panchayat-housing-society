@@ -1718,14 +1718,141 @@
             <!-- SECTION 6: INSTALLATION -->
             <section id="installation">
                 <div class="section-header">
-                    <h2><i class="fas fa-download me-2"></i>12. How to Install</h2>
-                </div>                                                                                                                                              
+=======
+                <h2><i class="fas fa-download me-2"></i>12. How to Install</h2>
+                </div>
 
-                -  
+                <p>This installation guide works for both users who clone the repository and users who download the ZIP file from GitHub.</p>
+                <h3>Working with the ZIP file</h3>
+                <p>If you downloaded the ZIP from GitHub, unzip it first and then open the project folder in your terminal.</p>
+                <pre>cd Panchayat-housing-society-main</pre>
+
+                <h3>Prerequisites</h3>
+                <ul>
+                    <li>Python 3.11+ → <a href="https://www.python.org/downloads">python.org/downloads</a></li>
+                    <li>MySQL 8.0+ → <a href="https://dev.mysql.com/downloads/mysql">dev.mysql.com</a></li>
+                    <li>Git (optional) → <a href="https://git-scm.com">git-scm.com</a></li>
+                </ul>
+
+                <h3>Step 1: Open the project folder</h3>
+                <pre>cd Panchayat-housing-society-main</pre>
+
+                <h3>Step 2: Create a virtual environment</h3>
+                <pre>python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Mac/Linux
+source venv/bin/activate</pre>
+
+                <h3>Step 3: Install dependencies</h3>
+                <pre>pip install -r requirements.txt</pre>
+                <p><strong>Important:</strong> This project now includes <code>PyMySQL</code> in <code>requirements.txt</code> so MySQL compatibility works without requiring <code>mysqlclient</code> on Windows.</p>
+
+                <h3>Step 4: Create the MySQL database</h3>
+                <pre>CREATE DATABASE panchayat_db 
+  CHARACTER SET utf8mb4 
+  COLLATE utf8mb4_unicode_ci;</pre>
+
+                <h3>Step 5: Create the <code>.env</code> file</h3>
+                <pre>SECRET_KEY=your-django-secret-key
+DEBUG=True
+DB_NAME=panchayat_db
+DB_USER=root
+DB_PASSWORD=root
+DB_HOST=localhost
+DB_PORT=3306
+GEMINI_API_KEY=your-gemini-api-key
+GROQ_API_KEY=your-groq-api-key</pre>
+
+                <div class="callout callout-info">
+                    <div class="callout-title"><i class="fas fa-key"></i> API Keys</div>
+                    <div><strong>Gemini:</strong> <a href="https://aistudio.google.com">aistudio.google.com</a></div>
+                    <div><strong>Groq:</strong> <a href="https://console.groq.com">console.groq.com</a></div>
+                </div>
+
+                <h3>Step 6: Run migrations</h3>
+                <pre>python manage.py migrate</pre>
+
+                <h3>Step 7: Seed sample data</h3>
+                <pre>python manage.py seed_panchayat</pre>
+
+                <h3>Step 8: Run the server</h3>
+                <pre>python manage.py runserver
+
+# If port 8000 is already in use:
+python manage.py runserver 8001</pre>
 
 
 
 
+=======
+                </div>
+
+                <p>This installation guide works for both users who clone the repository and users who download the ZIP file from GitHub.</p>
+                <h3>Working with the ZIP file</h3>
+                <p>If you downloaded the ZIP from GitHub, unzip it first and then open the project folder in your terminal.</p>
+                <pre>cd Panchayat-housing-society-main</pre>
+
+                <h3>Prerequisites</h3>
+                <ul>
+                    <li>Python 3.11+ → <a href="https://www.python.org/downloads">python.org/downloads</a></li>
+                    <li>MySQL 8.0+ → <a href="https://dev.mysql.com/downloads/mysql">dev.mysql.com</a></li>
+                    <li>Git (optional) → <a href="https://git-scm.com">git-scm.com</a></li>
+                </ul>
+
+                <h3>Step 1: Open the project folder</h3>
+                <pre>cd Panchayat-housing-society-main</pre>
+
+                <h3>Step 2: Create a virtual environment</h3>
+                <pre>python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Mac/Linux
+source venv/bin/activate</pre>
+
+                <h3>Step 3: Install dependencies</h3>
+                <pre>pip install -r requirements.txt</pre>
+                <p><strong>Important:</strong> This project now includes <code>PyMySQL</code> in <code>requirements.txt</code> so MySQL compatibility works without requiring <code>mysqlclient</code> on Windows.</p>
+
+                <h3>Step 4: Create the MySQL database</h3>
+                <pre>CREATE DATABASE panchayat_db 
+  CHARACTER SET utf8mb4 
+  COLLATE utf8mb4_unicode_ci;</pre>
+
+                <h3>Step 5: Create the <code>.env</code> file</h3>
+                <pre>SECRET_KEY=your-django-secret-key
+DEBUG=True
+DB_NAME=panchayat_db
+DB_USER=root
+DB_PASSWORD=root
+DB_HOST=localhost
+DB_PORT=3306
+GEMINI_API_KEY=your-gemini-api-key
+GROQ_API_KEY=your-groq-api-key</pre>
+
+                <div class="callout callout-info">
+                    <div class="callout-title"><i class="fas fa-key"></i> API Keys</div>
+                    <div><strong>Gemini:</strong> <a href="https://aistudio.google.com">aistudio.google.com</a></div>
+                    <div><strong>Groq:</strong> <a href="https://console.groq.com">console.groq.com</a></div>
+                </div>
+
+                <h3>Step 6: Run migrations</h3>
+                <pre>python manage.py migrate</pre>
+
+                <h3>Step 7: Seed sample data</h3>
+                <pre>python manage.py seed_panchayat</pre>
+
+                <h3>Step 8: Run the server</h3>
+                <pre>python manage.py runserver
+
+# If port 8000 is already in use:
+python manage.py runserver 8001</pre>
+            </section>
+>>>>>>> bc0de2c (Updated project files)
 
 
 
@@ -2665,9 +2792,16 @@ http://127.0.0.1:8000</pre>
                     <div class="card-body">
                         <strong>Fix:</strong>
                         <ul class="mb-0">
-                            <li>Windows: <code>pip install mysqlclient</code></li>
-                            <li>Mac: <code>brew install mysql-client</code> then <code>pip install mysqlclient</code></li>
-                            <li>Ubuntu: <code>sudo apt install python3-dev default-libmysqlclient-dev</code> then <code>pip install mysqlclient</code></li>
+<<<<<<< HEAD
+=======
+                            <li>Install the repository requirements first: <code>pip install -r requirements.txt</code>.</li>
+                            <li>The project now uses <code>PyMySQL</code> for MySQL compatibility on Windows.</li>
+                            <li>If you intentionally want <code>mysqlclient</code> instead, install the platform-specific dependencies first and then run <code>pip install mysqlclient</code>.</li>
+=======
+                            <li>Install the repository requirements first: <code>pip install -r requirements.txt</code>.</li>
+                            <li>The project now uses <code>PyMySQL</code> for MySQL compatibility on Windows.</li>
+                            <li>If you intentionally want <code>mysqlclient</code> instead, install the platform-specific dependencies first and then run <code>pip install mysqlclient</code>.</li>
+>>>>>>> bc0de2c (Updated project files)
                         </ul>
                     </div>
                 </div>
