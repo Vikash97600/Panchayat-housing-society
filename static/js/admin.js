@@ -26,7 +26,43 @@ document.addEventListener('DOMContentLoaded', () => {
   loadBylaws();
   loadServices();
   loadAuditLog();
+
+  document.getElementById('edit-profile-form')?.addEventListener('submit', saveProfile);
 });
+
+const adminState = {
+  societiesCount: 0,
+  usersCount: 0,
+  isLoading: false,
+  error: null,
+};
+
+function setAdminState(partial) {
+  Object.assign(adminState, partial);
+  renderAdminStats();
+}
+
+function renderAdminStats() {
+  const dashboardSocietiesEl = document.getElementById('stat-societies');
+  const dashboardUsersEl = document.getElementById('stat-users');
+  const profileSocietiesEl = document.getElementById('profile-admin-societies');
+  const profileUsersEl = document.getElementById('profile-admin-users');
+
+  const displaySocieties = adminState.isLoading ? '...' : adminState.error ? '--' : adminState.societiesCount;
+  const displayUsers = adminState.isLoading ? '...' : adminState.error ? '--' : adminState.usersCount;
+
+  if (dashboardSocietiesEl) dashboardSocietiesEl.textContent = displaySocieties;
+  if (dashboardUsersEl) dashboardUsersEl.textContent = displayUsers;
+  if (profileSocietiesEl) profileSocietiesEl.textContent = displaySocieties;
+  if (profileUsersEl) profileUsersEl.textContent = displayUsers;
+
+  if (!adminState.isLoading && !adminState.error) {
+    animateValue('stat-societies', 0, adminState.societiesCount, 500);
+    animateValue('stat-users', 0, adminState.usersCount, 500);
+    animateValue('profile-admin-societies', 0, adminState.societiesCount, 500);
+    animateValue('profile-admin-users', 0, adminState.usersCount, 500);
+  }
+}
 
 // Tab switching
 function switchTab(tabId) {
@@ -50,29 +86,58 @@ function switchTab(tabId) {
 
 // Dashboard
 async function loadDashboard() {
+  setAdminState({ isLoading: true, error: null });
+
   try {
-    const [usersRes, complaintsRes, duesRes] = await Promise.all([
+    const [usersRes, complaintsRes, duesRes, societiesRes] = await Promise.all([
       api.get('/auth/users/'),
       api.get('/complaints/'),
-      api.get('/finance/dues/')
+      api.get('/finance/dues/'),
+      api.get('/auth/societies/')
     ]);
+
+    if (!usersRes.ok) throw new Error('Failed to fetch users');
+    if (!complaintsRes.ok) throw new Error('Failed to fetch complaints');
+    if (!duesRes.ok) throw new Error('Failed to fetch dues');
+    if (!societiesRes.ok) throw new Error('Failed to fetch societies');
 
     const usersData = await usersRes.json();
     const complaintsData = await complaintsRes.json();
     const duesData = await duesRes.json();
+    const societiesData = await societiesRes.json();
 
-    const users = usersData.results || [];
-    const complaints = complaintsData.results || [];
-    const dues = duesData.results || [];
+    const users = usersData.results || usersData.data || [];
+    const complaints = complaintsData.results || complaintsData.data || [];
+    const dues = duesData.results || duesData.data || [];
+    const societies = societiesData.data || societiesData.results || [];
 
-    // Animate numbers
-    animateValue('stat-societies', 0, 1, 500);
-    animateValue('stat-users', 0, users.length, 500);
-    animateValue('stat-complaints', 0, complaints.filter(c => c.status === 'open').length, 500);
-    animateValue('stat-dues', 0, dues.filter(d => !d.is_paid).length, 500);
+    const userCount = Array.isArray(users) ? users.length : 0;
+    const societyCount = Array.isArray(societies) ? societies.length : 0;
+
+    // Update dashboard and profile stats
+    animateValue('stat-complaints', 0, Array.isArray(complaints) ? complaints.filter(c => c.status === 'open').length : 0, 500);
+    animateValue('stat-dues', 0, Array.isArray(dues) ? dues.filter(d => !d.is_paid).length : 0, 500);
+    setAdminState({ societiesCount: societyCount, usersCount: userCount, isLoading: false, error: null });
+
   } catch (e) {
     console.error('Dashboard load error:', e);
-    showToast('Failed to load dashboard data', 'error');
+    showToast('Failed to load dashboard data: ' + e.message, 'error');
+    
+    setAdminState({ isLoading: false, error: e.message || 'Failed to load stats' });
+    document.getElementById('stat-complaints').textContent = '--';
+    document.getElementById('stat-dues').textContent = '--';
+  }
+}
+
+function updateProfileStats(societiesCount, usersCount) {
+  const societiesEl = document.getElementById('profile-admin-societies');
+  const usersEl = document.getElementById('profile-admin-users');
+  
+  if (societiesEl) {
+    animateValue('profile-admin-societies', 0, societiesCount, 500);
+  }
+  if (usersEl) {
+    animateValue('profile-admin-users', 0, usersCount, 500);
   }
 }
 
@@ -1200,6 +1265,8 @@ window.filterServices = filterServices;
 window.clearServiceFilters = clearServiceFilters;
 window.updateBulkActions = updateBulkActions;
 window.bulkDeleteServices = bulkDeleteServices;
+window.editProfile = editProfile;
+window.saveProfile = saveProfile;
 window.bulkUpdateServices = bulkUpdateServices;
 window.generateSlots = generateSlots;
 window.saveSociety = saveSociety;
@@ -1348,6 +1415,78 @@ async function loadProfile() {
       if (phoneEl) phoneEl.textContent = user.phone || 'N/A';
       if (userAvatar) userAvatar.textContent = avatarInitial;
     }
+  }
+}
+
+async function editProfile() {
+  try {
+    const cachedUser = auth.getUser() || JSON.parse(localStorage.getItem('panchayat_user') || 'null');
+    if (!cachedUser) {
+      showToast('Unable to load profile for editing', 'error');
+      return;
+    }
+
+    const nameInput = document.getElementById('edit-profile-name');
+    const emailInput = document.getElementById('edit-profile-email');
+    const phoneInput = document.getElementById('edit-profile-phone');
+
+    if (nameInput) nameInput.value = cachedUser.full_name || [cachedUser.first_name, cachedUser.last_name].filter(Boolean).join(' ') || '';
+    if (emailInput) emailInput.value = cachedUser.email || '';
+    if (phoneInput) phoneInput.value = cachedUser.phone || '';
+
+    const modalElement = document.getElementById('editProfileModal');
+    if (!modalElement) {
+      showToast('Edit profile modal is unavailable', 'error');
+      return;
+    }
+
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+  } catch (e) {
+    console.error('PROFILE', 'Error opening edit profile form:', e);
+    showToast('Failed to open edit profile form', 'error');
+  }
+}
+
+async function saveProfile(event) {
+  event.preventDefault();
+
+  const email = document.getElementById('edit-profile-email')?.value.trim();
+  const phone = document.getElementById('edit-profile-phone')?.value.trim();
+
+  if (!email) {
+    showToast('Email is required', 'error');
+    return;
+  }
+
+  const payload = {
+    email,
+    phone: phone || null,
+  };
+
+  const btn = document.querySelector('#edit-profile-form button[type="submit"]');
+  setButtonLoading(btn, true);
+
+  try {
+    const res = await api.patch('/auth/me/', payload);
+    const result = await res.json();
+
+    if (res.ok && result.success) {
+      showToast('Profile updated successfully', 'success');
+      localStorage.setItem('panchayat_user', JSON.stringify(result.data));
+      loadProfile();
+      const modalElement = document.getElementById('editProfileModal');
+      const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+      modal.hide();
+    } else {
+      const errorMessage = result.message || result.error || (result.errors ? Object.values(result.errors).flat().join(', ') : 'Failed to update profile');
+      showToast(errorMessage, 'error');
+    }
+  } catch (e) {
+    console.error('PROFILE', 'Error saving profile:', e);
+    showToast('Error saving profile', 'error');
+  } finally {
+    setButtonLoading(btn, false);
   }
 }
 
