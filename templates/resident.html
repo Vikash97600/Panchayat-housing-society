@@ -1376,87 +1376,125 @@
     </div>
 
     <!-- Profile Tab -->
-    <div id="tab-profile" class="tab-content d-none">
-      <div class="page-header">
-        <h2><i class="fas fa-user me-2"></i>My Profile</h2>
-      </div>
-
-      <div class="row">
-        <div class="col-lg-8">
-          <div class="profile-card">
-            <div class="profile-card-header">
-              <div class="profile-avatar-large" id="profile-avatar">
-                <i class="fas fa-user"></i>
-              </div>
-              <div class="profile-header-info">
-                <h3 id="profile-name">Loading...</h3>
-                <span class="badge-role" id="profile-role-badge">Resident</span>
-              </div>
-            </div>
-            
-            <div class="profile-card-body">
-              <div class="profile-detail-grid">
-                <div class="profile-detail-item">
-                  <div class="detail-icon">
-                    <i class="fas fa-envelope"></i>
-                  </div>
-                  <div class="detail-content">
-                    <label>Email Address</label>
-                    <p id="profile-email">-</p>
-                  </div>
-                </div>
-                
-                <div class="profile-detail-item">
-                  <div class="detail-icon">
-                    <i class="fas fa-phone"></i>
-                  </div>
-                  <div class="detail-content">
-                    <label>Phone Number</label>
-                    <p id="profile-phone">-</p>
-                  </div>
-                </div>
-                
-                <div class="profile-detail-item">
-                  <div class="detail-icon">
-                    <i class="fas fa-id-card"></i>
-                  </div>
-                  <div class="detail-content">
-                    <label>Role</label>
-                    <p id="profile-role">-</p>
-                  </div>
-                </div>
-                
-                <div class="profile-detail-item">
-                  <div class="detail-icon">
-                    <i class="fas fa-home"></i>
-                  </div>
-                  <div class="detail-content">
-                    <label>Flat Number</label>
-                    <p id="profile-flat">-</p>
-                  </div>
-                </div>
-                
-                <div class="profile-detail-item">
-                  <div class="detail-icon">
-                    <i class="fas fa-building"></i>
-                  </div>
-                  <div class="detail-content">
-                    <label>Wing</label>
-                    <p id="profile-wing">-</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="profile-actions mt-4">
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
-                  <i class="fas fa-key me-2"></i>Change Password
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+     <div id="tab-profile" class="tab-content d-none">
+       <div class="page-header">
+         <h2><i class="fas fa-user me-2"></i>My Profile</h2>
+       </div>
+       
+       <div class="row">
+         <div class="col-lg-8">
+           <div class="profile-card premium resident" id="profile-card">
+             <div class="profile-card-header">
+               <div class="profile-avatar-wrapper">
+                 <div class="profile-avatar-large" id="profile-avatar">
+                   <i class="fas fa-user"></i>
+                 </div>
+                 <div class="profile-avatar-status" id="profile-status"></div>
+               </div>
+               <div class="profile-header-content">
+                 <h3 id="profile-name">Loading...</h3>
+                 <span class="badge-role" id="profile-role-badge">
+                   <i class="fas fa-user"></i> Resident
+                 </span>
+                 <span class="profile-department" id="profile-department">Community Member</span>
+               </div>
+             </div>
+             
+             <div class="profile-card-body">
+               <div class="profile-detail-grid">
+                 <div class="profile-detail-item">
+                   <div class="detail-icon email">
+                     <i class="fas fa-envelope"></i>
+                   </div>
+                   <div class="detail-content">
+                     <label>Email Address</label>
+                     <p id="profile-email">-</p>
+                   </div>
+                 </div>
+                 
+                 <div class="profile-detail-item">
+                   <div class="detail-icon phone">
+                     <i class="fas fa-phone"></i>
+                   </div>
+                   <div class="detail-content">
+                     <label>Phone Number</label>
+                     <p id="profile-phone">-</p>
+                   </div>
+                 </div>
+                 
+                 <div class="profile-detail-item">
+                   <div class="detail-icon role">
+                     <i class="fas fa-id-card"></i>
+                   </div>
+                   <div class="detail-content">
+                     <label>Role</label>
+                     <p id="profile-role">-</p>
+                   </div>
+                 </div>
+                 
+                 <div class="profile-detail-item">
+                   <div class="detail-icon location">
+                     <i class="fas fa-home"></i>
+                   </div>
+                   <div class="detail-content">
+                     <label>Flat Number</label>
+                     <p id="profile-flat">-</p>
+                   </div>
+                 </div>
+                 
+                 <div class="profile-detail-item">
+                   <div class="detail-icon team">
+                     <i class="fas fa-building"></i>
+                   </div>
+                   <div class="detail-content">
+                     <label>Wing</label>
+                     <p id="profile-wing">-</p>
+                   </div>
+                 </div>
+               </div>
+               
+               <div class="profile-actions">
+                 <button class="btn btn-primary btn-modern" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                   <i class="fas fa-key me-2"></i>Change Password
+                 </button>
+                 <button class="btn btn-outline-secondary" onclick="editProfile()">
+                   <i class="fas fa-edit me-2"></i>Edit Profile
+                 </button>
+               </div>
+             </div>
+           </div>
+         </div>
+         
+         <div class="col-lg-4">
+           <div class="card">
+             <div class="card-header">
+               <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>My Activity</h5>
+             </div>
+             <div class="card-body">
+               <div class="profile-stats">
+                 <div class="profile-stat">
+                   <div class="stat-number" id="profile-open-complaints">0</div>
+                   <div class="stat-label">Open Issues</div>
+                 </div>
+                 <div class="profile-stat">
+                   <div class="stat-number" id="profile-resolved-complaints">0</div>
+                   <div class="stat-label">Resolved</div>
+                 </div>
+               </div>
+             </div>
+           </div>
+           
+           <div class="card mt-3">
+             <div class="card-header">
+               <h5 class="mb-0"><i class="fas fa-calendar-check me-2"></i>Next Booking</h5>
+             </div>
+             <div class="card-body">
+               <p class="text-muted small" id="profile-next-booking">No upcoming bookings</p>
+             </div>
+           </div>
+         </div>
+       </div>
+     </div>
   </main>
 </div>
 
