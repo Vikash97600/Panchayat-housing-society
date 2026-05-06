@@ -8,6 +8,103 @@ function log(section, message, data = null) {
   }
 }
 
+const committeeState = {
+  complaints: [],
+  notices: [],
+  quickStats: {
+    openTickets: 0,
+    resolvedTickets: 0,
+  },
+  upcomingMeetingText: 'No meetings scheduled',
+  loading: {
+    dashboard: false,
+    notices: false,
+  },
+  errors: {
+    dashboard: null,
+    notices: null,
+  }
+};
+
+function setCommitteeState(changes) {
+  for (const [key, value] of Object.entries(changes)) {
+    if (key === 'quickStats' && typeof value === 'object') {
+      committeeState.quickStats = {
+        ...committeeState.quickStats,
+        ...value
+      };
+      continue;
+    }
+
+    if (typeof value === 'object' && value !== null && !Array.isArray(value) && typeof committeeState[key] === 'object') {
+      committeeState[key] = {
+        ...committeeState[key],
+        ...value
+      };
+      continue;
+    }
+
+    committeeState[key] = value;
+  }
+
+  renderCommitteeProfile();
+}
+
+function renderCommitteeStats() {
+  const openTicketsEl = document.getElementById('profile-tickets-open');
+  const resolvedTicketsEl = document.getElementById('profile-tickets-resolved');
+  const openValue = Number.isFinite(committeeState.quickStats.openTickets) ? committeeState.quickStats.openTickets : '--';
+  const resolvedValue = Number.isFinite(committeeState.quickStats.resolvedTickets) ? committeeState.quickStats.resolvedTickets : '--';
+
+  if (openTicketsEl) openTicketsEl.textContent = openValue;
+  if (resolvedTicketsEl) resolvedTicketsEl.textContent = resolvedValue;
+}
+
+function deriveUpcomingMeetingText(notices) {
+  if (!Array.isArray(notices) || notices.length === 0) {
+    return 'No meetings scheduled';
+  }
+
+  const normalized = notices.map(n => ({
+    ...n,
+    matchText: `${n.title || ''} ${n.body || ''}`.toLowerCase()
+  }));
+
+  const meetingNotice = normalized.find(n => /\b(meeting|agm|general meeting|committee meeting|notice of meeting|board meeting)\b/.test(n.matchText));
+  if (meetingNotice) {
+    const when = meetingNotice.expires_at ? ` on ${formatDate(meetingNotice.expires_at)}` : '';
+    return `Next meeting: ${meetingNotice.title}${when}`;
+  }
+
+  const futureNotice = normalized
+    .filter(n => n.expires_at && new Date(n.expires_at) > new Date())
+    .sort((a, b) => new Date(a.expires_at) - new Date(b.expires_at))[0];
+
+  if (futureNotice) {
+    return `Upcoming notice: ${futureNotice.title} expires on ${formatDate(futureNotice.expires_at)}`;
+  }
+
+  const pinnedNotice = normalized.find(n => n.is_pinned);
+  if (pinnedNotice) {
+    return `Pinned notice: ${pinnedNotice.title}`;
+  }
+
+  return `Latest update: ${normalized[0].title}`;
+}
+
+function renderCommitteeUpcoming() {
+  const upcomingEl = document.getElementById('profile-next-meeting');
+  if (!upcomingEl) return;
+
+  upcomingEl.textContent = committeeState.upcomingMeetingText;
+  upcomingEl.className = `small ${committeeState.upcomingMeetingText.startsWith('No meetings') ? 'text-muted' : 'text-dark'}`;
+}
+
+function renderCommitteeProfile() {
+  renderCommitteeStats();
+  renderCommitteeUpcoming();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log('[COMMITTEE] DOMContentLoaded fired');
   console.log('[COMMITTEE] requireAuth available:', typeof requireAuth);
@@ -46,6 +143,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadMaintenance();
   loadDues();
   loadBookings();
+
+  document.getElementById('edit-profile-form')?.addEventListener('submit', saveProfile);
 });
 
 function switchTab(tabId) {
@@ -131,7 +230,21 @@ async function loadDashboard() {
 
   console.log('[DASHBOARD] Today resolved count:', todayResolved);
 
-  document.getElementById('stat-open').textContent = complaints.filter(c => c.status === 'open').length;
+  const openTickets = complaints.filter(c => c.status === 'open').length;
+  const resolvedTickets = complaints.filter(c => c.status === 'resolved').length;
+
+  setCommitteeState({
+    complaints,
+    quickStats: {
+      openTickets,
+      resolvedTickets
+    },
+    errors: {
+      dashboard: null
+    }
+  });
+
+  document.getElementById('stat-open').textContent = openTickets;
   document.getElementById('stat-resolved').textContent = todayResolved;
   document.getElementById('stat-pending-dues').textContent = dues.filter(d => !d.is_paid).length;
   document.getElementById('stat-notices').textContent = notices.length;
@@ -478,9 +591,21 @@ async function loadNotices() {
     console.log('[NOTICES] Loaded:', notices.length);
     
     if (notices.length === 0) {
+      setCommitteeState({
+        notices,
+        upcomingMeetingText: deriveUpcomingMeetingText(notices),
+        errors: { notices: null }
+      });
+
       tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4"><div class="empty-state"><i class="fas fa-bullhorn empty-state-icon"></i><h4>No Notices</h4><p>Post your first notice</p></div></td></tr>';
       return;
     }
+
+    setCommitteeState({
+      notices,
+      upcomingMeetingText: deriveUpcomingMeetingText(notices),
+      errors: { notices: null }
+    });
 
     tbody.innerHTML = notices.map(n => `
       <tr class="${n.is_pinned ? 'pinned-notice' : ''}">
@@ -510,6 +635,11 @@ async function loadNotices() {
     `).join('');
   } catch (e) {
     console.error('[NOTICES] Error:', e);
+    setCommitteeState({
+      notices: [],
+      upcomingMeetingText: 'No meetings scheduled',
+      errors: { notices: e.message || 'Failed to load notices' }
+    });
     tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Failed to load notices</td></tr>';
   }
 }
@@ -963,11 +1093,13 @@ window.loadMaintenance = loadMaintenance;
 window.loadDues = loadDues;
 window.markPaid = markPaid;
 window.loadBookings = loadBookings;
+window.editProfile = editProfile;
 window.updateBookingStatus = updateBookingStatus;
 window.loadComplaintDetails = loadComplaintDetails;
 window.updateComplaint = updateComplaint;
 window.addComplaintNote = addComplaintNote;
 window.loadAssignees = loadAssignees;
+window.editProfile = editProfile;
 
 // ============================================
 // Profile Management
@@ -1063,6 +1195,78 @@ async function loadProfile() {
       if (phoneEl) phoneEl.textContent = user.phone || 'N/A';
       if (userAvatar) userAvatar.textContent = avatarInitial;
     }
+  }
+}
+
+async function editProfile() {
+  try {
+    const cachedUser = auth.getUser() || JSON.parse(localStorage.getItem('panchayat_user') || 'null');
+    if (!cachedUser) {
+      showToast('Unable to load profile for editing', 'error');
+      return;
+    }
+
+    const nameInput = document.getElementById('edit-profile-name');
+    const emailInput = document.getElementById('edit-profile-email');
+    const phoneInput = document.getElementById('edit-profile-phone');
+
+    if (nameInput) nameInput.value = cachedUser.full_name || [cachedUser.first_name, cachedUser.last_name].filter(Boolean).join(' ') || '';
+    if (emailInput) emailInput.value = cachedUser.email || '';
+    if (phoneInput) phoneInput.value = cachedUser.phone || '';
+
+    const modalElement = document.getElementById('editProfileModal');
+    if (!modalElement) {
+      showToast('Edit profile modal is unavailable', 'error');
+      return;
+    }
+
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+  } catch (e) {
+    console.error('PROFILE', 'Error opening edit profile form:', e);
+    showToast('Failed to open edit profile form', 'error');
+  }
+}
+
+async function saveProfile(event) {
+  event.preventDefault();
+
+  const email = document.getElementById('edit-profile-email')?.value.trim();
+  const phone = document.getElementById('edit-profile-phone')?.value.trim();
+
+  if (!email) {
+    showToast('Email is required', 'error');
+    return;
+  }
+
+  const payload = {
+    email,
+    phone: phone || null
+  };
+
+  const btn = document.querySelector('#edit-profile-form button[type="submit"]');
+  setButtonLoading(btn, true);
+
+  try {
+    const res = await api.patch('/auth/me/', payload);
+    const result = await res.json();
+
+    if (res.ok && result.success) {
+      showToast('Profile updated successfully', 'success');
+      localStorage.setItem('panchayat_user', JSON.stringify(result.data));
+      loadProfile();
+      const modalElement = document.getElementById('editProfileModal');
+      const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+      modal.hide();
+    } else {
+      const errorMessage = result.message || result.error || (result.errors ? Object.values(result.errors).flat().join(', ') : 'Failed to update profile');
+      showToast(errorMessage, 'error');
+    }
+  } catch (e) {
+    console.error('PROFILE', 'Error saving profile:', e);
+    showToast('Error saving profile', 'error');
+  } finally {
+    setButtonLoading(btn, false);
   }
 }
 

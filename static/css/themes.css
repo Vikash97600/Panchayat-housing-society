@@ -1271,25 +1271,32 @@ a:not(.btn):hover {
 /* Profile stats */
 .profile-stats {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   margin-top: 12px;
-  padding-top: 16px;
+  padding-top: 14px;
   border-top: 1px solid var(--border);
+  align-items: stretch;
 }
 
 .profile-stat {
   text-align: center;
   flex: 1;
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius-sm) + 2px);
+  padding: 14px 12px;
+  box-shadow: var(--shadow-sm);
 }
 
 .profile-stat .stat-number {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--dark);
 }
 
 .profile-stat .stat-label {
-  font-size: 10px;
+  margin-top: 4px;
+  font-size: 11px;
   color: var(--gray);
   text-transform: uppercase;
   letter-spacing: 0.5px;
