@@ -13,6 +13,110 @@ function log(section, message, data = null) {
 let currentServiceId = null;
 let selectedSlotId = null;
 
+const residentState = {
+  openIssues: 0,
+  resolvedIssues: 0,
+  nextBookingText: 'No upcoming bookings',
+  upcomingBooking: null,
+  errors: {
+    dashboard: null
+  }
+};
+
+function renderResidentActivity() {
+  const openEl = document.getElementById('profile-open-complaints');
+  const resolvedEl = document.getElementById('profile-resolved-complaints');
+  const nextBookingEl = document.getElementById('profile-next-booking');
+
+  if (openEl) openEl.textContent = Number.isFinite(residentState.openIssues) ? residentState.openIssues : '--';
+  if (resolvedEl) resolvedEl.textContent = Number.isFinite(residentState.resolvedIssues) ? residentState.resolvedIssues : '--';
+  if (nextBookingEl) nextBookingEl.textContent = residentState.nextBookingText;
+}
+
+function setResidentState(changes) {
+  Object.keys(changes).forEach(key => {
+    if (typeof changes[key] === 'object' && changes[key] !== null && !Array.isArray(changes[key]) && typeof residentState[key] === 'object') {
+      residentState[key] = {
+        ...residentState[key],
+        ...changes[key]
+      };
+    } else {
+      residentState[key] = changes[key];
+    }
+  });
+
+  renderResidentActivity();
+}
+
+function updateComplaintKpis(complaints, userId) {
+  if (!userId) return;
+
+  const myComplaints = complaints.filter(c => {
+    const submittedBy = c.submitted_by && typeof c.submitted_by === 'object' ? c.submitted_by.id : c.submitted_by;
+    return String(submittedBy) === String(userId);
+  });
+
+  const openCount = myComplaints.filter(c => ['open', 'in_progress'].includes(String(c.status))).length;
+  const resolvedCount = myComplaints.filter(c => ['resolved', 'closed'].includes(String(c.status))).length;
+
+  setResidentState({
+    openIssues: openCount,
+    resolvedIssues: resolvedCount,
+    errors: { dashboard: null }
+  });
+
+  const openEl = document.getElementById('profile-open-complaints');
+  const resolvedEl = document.getElementById('profile-resolved-complaints');
+  if (openEl) openEl.textContent = openCount;
+  if (resolvedEl) resolvedEl.textContent = resolvedCount;
+}
+
+function normalizeBooking(b) {
+  const displayDate = b.slot_date || b.booking_date || b.date || b.scheduled_at || (b.slot && b.slot.slot_date) || null;
+  const serviceLabel = b.service_name || (b.slot && b.slot.service && b.slot.service.name) || 'Service';
+  return {
+    ...b,
+    parsedDate: displayDate ? new Date(displayDate) : null,
+    serviceLabel,
+    displayDate
+  };
+}
+
+function updateBookingKpi(bookings, userId) {
+  if (!userId) return;
+
+  const today = new Date();
+  const myBookings = bookings
+    .filter(b => {
+      const residentId = b.resident && typeof b.resident === 'object' ? b.resident.id : b.resident;
+      return String(residentId) === String(userId) && !['cancelled', 'completed'].includes(String(b.status));
+    })
+    .map(normalizeBooking)
+    .filter(b => b.parsedDate && b.parsedDate >= today)
+    .sort((a, b) => a.parsedDate - b.parsedDate);
+
+  const nextBookingEl = document.getElementById('profile-next-booking');
+  if (myBookings.length > 0) {
+    const next = myBookings[0];
+    const nextText = `${next.serviceLabel} on ${formatDate(next.displayDate)}`;
+    setResidentState({
+      nextBookingText: nextText,
+      upcomingBooking: next,
+      errors: { dashboard: null }
+    });
+    if (nextBookingEl) nextBookingEl.textContent = nextText;
+    log('DASHBOARD', 'Next booking set:', nextText);
+  } else {
+    setResidentState({
+      nextBookingText: 'No upcoming bookings',
+      upcomingBooking: null,
+      errors: { dashboard: null }
+    });
+    if (nextBookingEl) nextBookingEl.textContent = 'No upcoming bookings';
+    log('DASHBOARD', 'No upcoming bookings found');
+  }
+}
+
 // ============================================
 // DOMContentLoaded - Main Initialization
 // ============================================
@@ -64,6 +168,8 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Initialize all data modules
   initializeData();
+
+  document.getElementById('edit-profile-form')?.addEventListener('submit', saveProfile);
   
   log('INIT', 'Initialization complete');
 });
@@ -209,18 +315,16 @@ async function loadDashboard() {
     const complaintsData = await complaintsRes.json();
     const complaints = complaintsData.results || [];
     log('DASHBOARD', 'Complaints loaded:', complaints.length);
-    
-    // Filter by submitted_by - handle both string and number comparison
-    const myComplaints = complaints.filter(c => String(c.submitted_by) === String(userId));
-    const openCount = myComplaints.filter(c => c.status === 'open').length;
-    
-    const countEl = document.getElementById('my-complaints-count');
-    if (countEl) {
-      countEl.textContent = openCount;
-      log('DASHBOARD', 'Open complaints count set:', openCount);
-    }
+
+    updateComplaintKpis(complaints, userId);
+    log('DASHBOARD', 'Complaint KPIs updated');
   } catch (e) {
     console.error('DASHBOARD', 'Error loading complaints:', e);
+    setResidentState({
+      openIssues: 0,
+      resolvedIssues: 0,
+      errors: { dashboard: e.message || 'Failed to load complaints' }
+    });
   }
   
   try {
@@ -229,23 +333,15 @@ async function loadDashboard() {
     const bookingsData = await bookingsRes.json();
     const bookings = bookingsData.results || [];
     log('DASHBOARD', 'Bookings loaded:', bookings.length);
-    
-    // Filter by resident - handle both string and number comparison
-    const myBookings = bookings.filter(b => String(b.resident) === String(userId) && b.status === 'confirmed');
-    const nextBookingEl = document.getElementById('next-booking');
-    if (nextBookingEl) {
-      if (myBookings.length > 0) {
-        const next = myBookings[0];
-        nextBookingEl.textContent = (next.service_name || 'Service') + ' (' + formatDate(next.slot_date) + ')';
-        log('DASHBOARD', 'Next booking set:', next.service_name);
-      } else {
-        nextBookingEl.textContent = 'None';
-      }
-    }
+
+    updateBookingKpi(bookings, userId);
   } catch (e) {
     console.error('DASHBOARD', 'Error loading bookings:', e);
-    const nextBookingEl = document.getElementById('next-booking');
-    if (nextBookingEl) nextBookingEl.textContent = '-';
+    setResidentState({
+      nextBookingText: 'No upcoming bookings',
+      upcomingBooking: null,
+      errors: { dashboard: e.message || 'Failed to load bookings' }
+    });
   }
   
   try {
@@ -340,7 +436,7 @@ document.getElementById('complaint-form')?.addEventListener('submit', async (e) 
     if (result.success) {
       showToast('Complaint submitted successfully', 'success');
       e.target.reset();
-      loadMyComplaints();
+      await Promise.all([loadMyComplaints(), loadDashboard()]);
       // Switch to list view
       const listLink = document.querySelector('[data-subtab="list"]');
       if (listLink) listLink.click();
@@ -514,7 +610,10 @@ async function loadMyComplaints(filter = 'all') {
 
   // Handle both string and number comparison for user ID
   const userId = user ? user.id : null;
-  const myComplaints = complaints.filter(c => c.submitted_by && String(c.submitted_by) === String(userId));
+  const myComplaints = complaints.filter(c => {
+    const submittedBy = c.submitted_by && typeof c.submitted_by === 'object' ? c.submitted_by.id : c.submitted_by;
+    return String(submittedBy) === String(userId);
+  });
   log('COMPLAINTS', 'My complaints:', myComplaints.length);
   
   const container = document.getElementById('my-complaints-list');
@@ -683,7 +782,11 @@ async function loadServices() {
       console.error('Error loading bookings:', e);
     }
     
-    const myBookings = allBookings.filter(b => String(b.resident) === String(user.id));
+    const myBookings = allBookings.filter(b => {
+      const residentId = b.resident && typeof b.resident === 'object' ? b.resident.id : b.resident;
+      return String(residentId) === String(user.id);
+    });
+    updateBookingKpi(allBookings, user.id);
     const tbody = document.getElementById('my-bookings-tbody');
     if (tbody) {
       if (myBookings.length === 0) {
@@ -806,7 +909,7 @@ document.getElementById('confirm-booking')?.addEventListener('click', async () =
         const bsModal = bootstrap.Modal.getInstance(modal);
         if (bsModal) bsModal.hide();
       }
-      loadServices();
+      await Promise.all([loadDashboard(), loadServices()]);
     } else {
       showToast(result.message || 'Booking failed', 'error');
     }
@@ -1023,7 +1126,7 @@ document.getElementById('save-complaint-btn')?.addEventListener('click', async (
       showToast('Complaint updated!', 'success');
       const modal = document.getElementById('complaintEditModal');
       if (modal) bootstrap.Modal.getInstance(modal).hide();
-      loadMyComplaints();
+      await Promise.all([loadMyComplaints(), loadDashboard()]);
     } else {
       showToast(result.message || 'Failed to update', 'error');
     }
@@ -1053,7 +1156,7 @@ document.getElementById('delete-complaint-btn')?.addEventListener('click', async
       showToast('Complaint deleted!', 'success');
       const modal = document.getElementById('complaintEditModal');
       if (modal) bootstrap.Modal.getInstance(modal).hide();
-      loadMyComplaints();
+      await Promise.all([loadMyComplaints(), loadDashboard()]);
     } else {
       showToast(result.message || 'Failed to delete', 'error');
     }
@@ -1075,12 +1178,84 @@ async function deleteComplaint(complaintId) {
     
     if (result.success) {
       showToast('Complaint deleted!', 'success');
-      loadMyComplaints();
+      await Promise.all([loadMyComplaints(), loadDashboard()]);
     } else {
       showToast(result.message || 'Failed to delete', 'error');
     }
   } catch (e) {
     showToast('Failed to delete complaint', 'error');
+  }
+}
+
+async function editProfile() {
+  try {
+    const cachedUser = auth.getUser() || JSON.parse(localStorage.getItem('panchayat_user') || 'null');
+    if (!cachedUser) {
+      showToast('Unable to load profile for editing', 'error');
+      return;
+    }
+
+    const nameInput = document.getElementById('edit-profile-name');
+    const emailInput = document.getElementById('edit-profile-email');
+    const phoneInput = document.getElementById('edit-profile-phone');
+
+    if (nameInput) nameInput.value = cachedUser.full_name || [cachedUser.first_name, cachedUser.last_name].filter(Boolean).join(' ') || '';
+    if (emailInput) emailInput.value = cachedUser.email || '';
+    if (phoneInput) phoneInput.value = cachedUser.phone || '';
+
+    const modalElement = document.getElementById('editProfileModal');
+    if (!modalElement) {
+      showToast('Edit profile modal is unavailable', 'error');
+      return;
+    }
+
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+  } catch (e) {
+    console.error('PROFILE', 'Error opening edit profile form:', e);
+    showToast('Failed to open edit profile form', 'error');
+  }
+}
+
+async function saveProfile(event) {
+  event.preventDefault();
+
+  const email = document.getElementById('edit-profile-email')?.value.trim();
+  const phone = document.getElementById('edit-profile-phone')?.value.trim();
+
+  if (!email) {
+    showToast('Email is required', 'error');
+    return;
+  }
+
+  const payload = {
+    email,
+    phone: phone || null
+  };
+
+  const btn = document.querySelector('#edit-profile-form button[type="submit"]');
+  setButtonLoading(btn, true);
+
+  try {
+    const res = await api.patch('/auth/me/', payload);
+    const result = await res.json();
+
+    if (res.ok && result.success) {
+      showToast('Profile updated successfully', 'success');
+      localStorage.setItem('panchayat_user', JSON.stringify(result.data));
+      loadProfile();
+      const modalElement = document.getElementById('editProfileModal');
+      const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+      modal.hide();
+    } else {
+      const errorMessage = result.message || result.error || (result.errors ? Object.values(result.errors).flat().join(', ') : 'Failed to update profile');
+      showToast(errorMessage, 'error');
+    }
+  } catch (e) {
+    console.error('PROFILE', 'Error saving profile:', e);
+    showToast('Error saving profile', 'error');
+  } finally {
+    setButtonLoading(btn, false);
   }
 }
 
@@ -1100,6 +1275,7 @@ window.cancelBooking = cancelBooking;
 window.selectPriority = selectPriority;
 window.openEditComplaint = openEditComplaint;
 window.deleteComplaint = deleteComplaint;
+window.editProfile = editProfile;
 
 // ============================================
 // Profile Management
