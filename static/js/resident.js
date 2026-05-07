@@ -66,19 +66,38 @@ function updateComplaintKpis(complaints, userId) {
   });
 
   const openEl = document.getElementById('profile-open-complaints');
+  const dashboardOpenEl = document.getElementById('my-complaints-count');
   const resolvedEl = document.getElementById('profile-resolved-complaints');
   if (openEl) openEl.textContent = openCount;
+  if (dashboardOpenEl) dashboardOpenEl.textContent = openCount;
   if (resolvedEl) resolvedEl.textContent = resolvedCount;
 }
 
 function normalizeBooking(b) {
-  const displayDate = b.slot_date || b.booking_date || b.date || b.scheduled_at || (b.slot && b.slot.slot_date) || null;
-  const serviceLabel = b.service_name || (b.slot && b.slot.service && b.slot.service.name) || 'Service';
+  // Use flattened fields from BookingListSerializer
+  const displayDate = b.slot_date;
+  const startTime = b.start_time;
+  const endTime = b.end_time;
+  const serviceLabel = b.service_name || 'Service';
+  
+  // Create parsed date for sorting
+  let parsedDate = null;
+  if (displayDate) {
+    if (startTime) {
+      // Combine date and time
+      parsedDate = new Date(`${displayDate}T${startTime}`);
+    } else {
+      parsedDate = new Date(displayDate);
+    }
+  }
+  
   return {
     ...b,
-    parsedDate: displayDate ? new Date(displayDate) : null,
+    parsedDate,
     serviceLabel,
-    displayDate
+    displayDate,
+    startTime,
+    endTime
   };
 }
 
@@ -96,15 +115,28 @@ function updateBookingKpi(bookings, userId) {
     .sort((a, b) => a.parsedDate - b.parsedDate);
 
   const nextBookingEl = document.getElementById('profile-next-booking');
+  const dashboardNextEl = document.getElementById('next-booking');
   if (myBookings.length > 0) {
     const next = myBookings[0];
-    const nextText = `${next.serviceLabel} on ${formatDate(next.displayDate)}`;
+    
+    // Format the booking text with date and time
+    let nextText = `${next.serviceLabel} on ${formatDate(next.displayDate)}`;
+    if (next.startTime && next.endTime) {
+      const startTimeFormatted = next.startTime.substring(0, 5);
+      const endTimeFormatted = next.endTime.substring(0, 5);
+      nextText += ` at ${startTimeFormatted} - ${endTimeFormatted}`;
+    } else if (next.startTime) {
+      const startTimeFormatted = next.startTime.substring(0, 5);
+      nextText += ` at ${startTimeFormatted}`;
+    }
+    
     setResidentState({
       nextBookingText: nextText,
       upcomingBooking: next,
       errors: { dashboard: null }
     });
     if (nextBookingEl) nextBookingEl.textContent = nextText;
+    if (dashboardNextEl) dashboardNextEl.textContent = nextText;
     log('DASHBOARD', 'Next booking set:', nextText);
   } else {
     setResidentState({
@@ -236,6 +268,7 @@ function initializeData() {
   Promise.allSettled([
     loadDashboard(),
     loadProfile(),
+    loadProfileData(), // Load profile KPIs
     loadMyComplaints(),
     loadServices(),
     loadMyDues(),
@@ -284,6 +317,11 @@ function switchTab(tabId) {
     target.classList.remove('d-none');
     target.classList.add('active');
     log('TAB', 'Tab activated:', target.id);
+    
+    // Load tab-specific data
+    if (tabId === 'profile') {
+      loadProfileData();
+    }
   } else {
     log('TAB', 'Target tab not found:', 'tab-' + tabId);
   }
@@ -392,6 +430,61 @@ async function loadDashboard() {
   } catch (e) {
     console.error('DASHBOARD', 'Error loading dashboard:', e);
   }
+}
+
+// ============================================
+// Profile Data Loading (for KPIs)
+// ============================================
+async function loadProfileData() {
+  log('PROFILE-DATA', 'Loading profile KPI data...');
+  const user = auth.getUser();
+  
+  if (!user) {
+    log('PROFILE-DATA', 'No user found, skipping profile data load');
+    return;
+  }
+  
+  const userId = user.id;
+  
+  try {
+    // Load complaints for KPIs
+    log('PROFILE-DATA', 'Loading complaints for KPIs...');
+    const complaintsRes = await api.get('/complaints/');
+    const complaintsData = await complaintsRes.json();
+    const complaints = complaintsData.results || [];
+    log('PROFILE-DATA', 'Complaints loaded for profile:', complaints.length);
+    
+    updateComplaintKpis(complaints, userId);
+    log('PROFILE-DATA', 'Complaint KPIs updated for profile');
+  } catch (e) {
+    console.error('PROFILE-DATA', 'Error loading complaints for profile:', e);
+    setResidentState({
+      openIssues: 0,
+      resolvedIssues: 0,
+      errors: { dashboard: e.message || 'Failed to load complaints' }
+    });
+  }
+  
+  try {
+    // Load bookings for KPIs
+    log('PROFILE-DATA', 'Loading bookings for KPIs...');
+    const bookingsRes = await api.get('/services/bookings/');
+    const bookingsData = await bookingsRes.json();
+    const bookings = bookingsData.results || [];
+    log('PROFILE-DATA', 'Bookings loaded for profile:', bookings.length);
+    
+    updateBookingKpi(bookings, userId);
+    log('PROFILE-DATA', 'Booking KPIs updated for profile');
+  } catch (e) {
+    console.error('PROFILE-DATA', 'Error loading bookings for profile:', e);
+    setResidentState({
+      nextBookingText: 'No upcoming bookings',
+      upcomingBooking: null,
+      errors: { dashboard: e.message || 'Failed to load bookings' }
+    });
+  }
+  
+  log('PROFILE-DATA', 'Profile KPI data loading complete');
 }
 
 // ============================================
