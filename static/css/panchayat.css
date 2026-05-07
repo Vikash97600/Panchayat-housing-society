@@ -1415,29 +1415,250 @@ a:hover {
 }
 
 .mobile-toggle:hover {
-  transform: scale(1.1);
+  transform: scale(1.05);
+  box-shadow: var(--shadow-lg);
 }
 
-/* ----- Responsive ----- */
+.mobile-toggle:active {
+  transform: scale(0.95);
+}
+
+.mobile-toggle:focus {
+  outline: 2px solid var(--brand-light);
+  outline-offset: 2px;
+}
+
+/* Hamburger icon animation */
+.mobile-toggle i {
+  transition: var(--transition);
+}
+
+.mobile-toggle[aria-expanded="true"] i {
+  transform: rotate(90deg);
+}
+
+/* ----- Responsive Navigation ----- */
 @media (max-width: 1024px) {
-  .sidebar {
-    transform: translateX(-100%);
-  }
-  
-  .sidebar.show {
-    transform: translateX(0);
-  }
-  
   .main-content {
     margin-left: 0;
   }
-  
+
+  /* Backdrop overlay */
+  .sidebar-overlay {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-fast), visibility var(--transition-fast);
+  }
+
+  .sidebar-overlay.show {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Off-canvas sidebar with smooth transitions */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform var(--transition);
+    box-shadow: var(--shadow-xl);
+    max-height: 100vh;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar.show {
+    transform: translateX(0);
+  }
+
+  /* Enhanced scrolling navigation */
+  .sidebar-nav {
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+    max-height: calc(100vh - 140px); /* Account for header and footer */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    padding-right: 4px; /* Space for scrollbar */
+  }
+
+  /* Custom scrollbar styling */
+  .sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-nav::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  .sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-light);
+  }
+
+  /* Ensure navigation sections don't break scrolling */
+  .sidebar-nav .nav-section {
+    flex-shrink: 0;
+    margin-bottom: 16px;
+  }
+
+  /* Fixed header and footer */
+  .sidebar-header {
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: inherit;
+  }
+
+  .sidebar-footer {
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    background: inherit;
+    border-top: 1px solid var(--border);
+    padding: 16px;
+  }
+
+  /* Mobile hamburger is visible */
   .mobile-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
   }
+
+  /* Prevent body scroll when sidebar is open */
+  body.nav-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+
+  /* Improve touch targets for mobile */
+  .sidebar-nav .nav-link {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+  }
+
+  /* Better focus states for accessibility */
+  .sidebar-nav .nav-link:focus {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: -2px;
+  }
+
+  /* Ensure smooth scrolling behavior */
+  .sidebar-nav {
+    scroll-behavior: smooth;
+  }
+
+  /* Handle very long navigation lists */
+  .sidebar-nav .nav-section:last-child {
+    margin-bottom: 80px; /* Extra space at bottom for better UX */
+  }
 }
+
+/* Additional responsive breakpoints for better mobile experience */
+@media (max-width: 480px) {
+  .mobile-toggle {
+    top: 12px;
+    left: 12px;
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+  }
+
+  .sidebar {
+    width: 280px; /* Slightly narrower on very small screens */
+  }
+
+  .sidebar-nav {
+    max-height: calc(100vh - 120px);
+  }
+
+  .sidebar-nav .nav-link {
+    padding: 14px 16px;
+    font-size: 15px;
+  }
+
+  .sidebar-header h3 {
+    font-size: 1.125rem;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .sidebar-overlay {
+    background: rgba(0,0,0,0.8);
+  }
+
+  .mobile-toggle {
+    border: 2px solid white;
+  }
+
+  .sidebar-nav .nav-link:focus {
+    outline: 3px solid white;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+
+  .sidebar-overlay {
+    transition: none;
+  }
+
+  .mobile-toggle {
+    transition: none;
+  }
+
+  .mobile-toggle i {
+    transition: none;
+  }
+
+  .sidebar-nav {
+    scroll-behavior: auto;
+  }
+}
+
+/* Drawer backdrop (desktop hidden; used on mobile) */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-fast), visibility var(--transition-fast);
+}
+
+.sidebar-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Ensure sidebar layout is robust for long menus */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.sidebar-nav {
+  flex: 1;
+  min-height: 0; /* Allow flex item to shrink below content size */
+}
+
 
 @media (max-width: 768px) {
   .main-content {

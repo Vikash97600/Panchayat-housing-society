@@ -21,8 +21,8 @@ class EmailBackend(ModelBackend):
 
     def user_can_authenticate(self, user):
         is_active = getattr(user, 'is_active', None)
-        is_approved = getattr(user, 'is_approved', True)
-        return is_active is not False and is_approved
+        is_approved = getattr(user, 'is_approved', False)
+        return is_active is True and is_approved is True
 
     def get_user(self, user_id):
         try:

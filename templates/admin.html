@@ -790,13 +790,14 @@
 
   <!-- Main Content -->
   <main class="main-content" role="main">
-    <!-- Header with Theme Toggle -->
+  <!-- Header with Theme Toggle -->
     <div class="main-header">
       <div class="header-left">
-        <button class="mobile-toggle d-lg-none" onclick="toggleMobileSidebar()">
+        <button class="mobile-toggle d-lg-none" onclick="toggleSidebarDrawer()" aria-label="Toggle navigation" aria-controls="sidebarDrawer" aria-expanded="false">
           <i class="fas fa-bars"></i>
         </button>
       </div>
+
       <div class="header-right">
         <div class="header-theme-toggle">
           <button class="header-theme-btn" onclick="toggleHeaderThemeMenu()" title="Change Theme">
