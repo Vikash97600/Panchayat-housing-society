@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSocieties();
   loadUsers();
   loadBylaws();
-  loadServices();
   loadAuditLog();
 
   document.getElementById('edit-profile-form')?.addEventListener('submit', saveProfile);
@@ -336,7 +335,7 @@ async function loadUsers(role = '') {
   try {
     const res = await api.get('/auth/users/');
     const data = await res.json();
-    const users = data.results || [];
+    const users = data.data || data.results || [];
     
     const filtered = role ? users.filter(u => u.role === role) : users;
     
@@ -553,12 +552,18 @@ async function downloadBylaw(bylawId, bylawTitle) {
 function formatAuditDetails(log) {
   if (!log.details) return '-';
   
-  const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+  let details;
+  try {
+    details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+  } catch (e) {
+    return String(log.details);
+  }
+  
   const action = log.action;
-  const model = log.model_name || '';
+  const safeDetails = (typeof details === 'object' && details !== null) ? details : {};
   
   const actionPatterns = {
-    'user_registered': `New user registered with email ${details.email || 'unknown'}`,
+    'user_registered': `New user registered with email ${safeDetails.email || 'unknown'}`,
     'user_login': `User logged in successfully`,
     'user_logout': `User logged out`,
     'user_approved': `User account was approved`,
@@ -566,8 +571,8 @@ function formatAuditDetails(log) {
     'password_changed': `User changed their password`,
     'password_reset': `User reset their password`,
     'password_reset_requested': `Password reset requested`,
-    'society_created': `New society "${details.name || ''}" was created`,
-    'society_updated': `Society "${details.name || ''}" was updated`,
+    'society_created': `New society "${safeDetails.name || ''}" was created`,
+    'society_updated': `Society "${safeDetails.name || ''}" was updated`,
     'service_created': `New service was created`,
     'service_updated': `Service was updated`,
     'service_deleted': `Service was deleted`,
@@ -589,17 +594,17 @@ function formatAuditDetails(log) {
   }
   
   // Fallback: format key-value pairs
-  if (typeof details === 'object' && details !== null) {
+  if (details && typeof details === 'object') {
     const parts = [];
     for (const [key, value] of Object.entries(details)) {
-      if (key !== 'id' && key !== 'created_at') {
+      if (key !== 'id' && key !== 'created_at' && value !== null && value !== undefined) {
         parts.push(`${key}: ${value}`);
       }
     }
     return parts.length > 0 ? parts.join(', ') : '-';
   }
   
-  return String(details);
+  return String(details || '-');
 }
 
 // Audit Log
@@ -623,8 +628,10 @@ async function loadAuditLog() {
     const res = await api.get('/auth/audit-logs/');
     const data = await res.json();
     
-    if (data.results && data.results.length > 0) {
-      const rows = data.results.map(log => `
+    const logs = data.data || data.results || [];
+    
+    if (logs.length > 0) {
+      const rows = logs.map(log => `
         <tr>
           <td>${formatDate(log.timestamp)}</td>
           <td>${log.user_name || 'System'}</td>
@@ -787,6 +794,9 @@ window.editSociety = editSociety;
 window.deleteSociety = deleteSociety;
 window.approveUser = approveUser;
 window.assignCommittee = assignCommittee;
+window.exportSocietiesReport = exportSocietiesReport;
+window.exportUsersReport = exportUsersReport;
+window.exportAuditLogReport = exportAuditLogReport;
 
 // ============================================
 // Committee Management
@@ -1103,3 +1113,204 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCommitteeSocieties();
   }
 });
+
+// ============================================
+// Export Functionality
+// ============================================
+function generateAdminReport(title, columns, rows) {
+  const currentDate = new Date().toLocaleDateString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+
+  const printWindow = window.open('', '_blank');
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${title} - Admin Report</title>
+      <style>
+        body {
+          font-family: 'Inter', system-ui, -apple-system, sans-serif;
+          color: #333;
+          margin: 0;
+          padding: 40px;
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+          padding-bottom: 20px;
+          border-bottom: 2px solid #1a2744;
+        }
+        .header h1 {
+          margin: 0;
+          color: #1a2744;
+          font-size: 28px;
+        }
+        .header p {
+          margin: 5px 0 0;
+          color: #666;
+          font-size: 14px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-bottom: 30px;
+        }
+        th, td {
+          padding: 12px 15px;
+          text-align: left;
+          border-bottom: 1px solid #ddd;
+        }
+        th {
+          background-color: #f8f9fa;
+          font-weight: 600;
+          color: #1a2744;
+        }
+        tr:nth-child(even) {
+          background-color: #fcfcfc;
+        }
+        .footer {
+          margin-top: 50px;
+          text-align: center;
+          font-size: 12px;
+          color: #888;
+          border-top: 1px solid #eee;
+          padding-top: 20px;
+        }
+        @media print {
+          body { padding: 0; }
+          button { display: none; }
+          @page { margin: 1cm; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Panchayat - System Admin</h1>
+        <p>${title}</p>
+        <p>Generated on: ${currentDate}</p>
+      </div>
+      
+      <table>
+        <thead>
+          <tr>
+            ${columns.map(col => `<th>${col}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(row => `
+            <tr>
+              ${row.map(cell => `<td>${cell !== null && cell !== undefined ? cell : '-'}</td>`).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      
+      <div class="footer">
+        <p>This is an automatically generated report from the Panchayat Admin System.</p>
+      </div>
+      
+      <script>
+        window.onload = function() {
+          setTimeout(() => {
+            window.print();
+            window.onafterprint = function() { window.close(); };
+          }, 500);
+        };
+      </script>
+    </body>
+    </html>
+  `;
+  
+  printWindow.document.open();
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+}
+
+async function exportSocietiesReport() {
+  try {
+    showToast('Preparing societies report...', 'info');
+    const res = await api.get('/auth/societies/');
+    const result = await res.json();
+    const societies = result.data || [];
+    
+    if (societies.length === 0) {
+      showToast('No societies to export', 'warning');
+      return;
+    }
+
+    const columns = ['Society Name', 'City', 'State', 'Total Flats', 'Plan Type', 'Status'];
+    const rows = societies.map(s => [
+      s.name,
+      s.city,
+      s.state,
+      s.total_flats,
+      (s.plan_type || 'Standard').toUpperCase(),
+      s.is_active ? 'Active' : 'Inactive'
+    ]);
+
+    generateAdminReport('Registered Societies Report', columns, rows);
+  } catch (error) {
+    console.error('Export error:', error);
+    showToast('Failed to generate report', 'error');
+  }
+}
+
+async function exportUsersReport() {
+  try {
+    showToast('Preparing users report...', 'info');
+    const res = await api.get('/auth/users/');
+    const result = await res.json();
+    const users = result.data || result.results || [];
+    
+    if (users.length === 0) {
+      showToast('No users to export', 'warning');
+      return;
+    }
+
+    const columns = ['Name', 'Email', 'Role', 'Society', 'Flat No', 'Status'];
+    const rows = users.map(u => [
+      u.full_name || u.first_name || '-',
+      u.email,
+      (u.role || '-').toUpperCase(),
+      u.society_name || '-',
+      u.flat_no ? `${u.flat_no}${u.wing ? '/' + u.wing : ''}` : '-',
+      u.is_approved ? 'Approved' : 'Pending'
+    ]);
+
+    generateAdminReport('System Users Report', columns, rows);
+  } catch (error) {
+    console.error('Export error:', error);
+    showToast('Failed to generate report', 'error');
+  }
+}
+
+async function exportAuditLogReport() {
+  try {
+    showToast('Preparing audit log report...', 'info');
+    const res = await api.get('/auth/audit-logs/');
+    const result = await res.json();
+    const logs = result.data || result.results || [];
+    
+    if (logs.length === 0) {
+      showToast('No audit logs to export', 'warning');
+      return;
+    }
+
+    const columns = ['Timestamp', 'User', 'Action', 'Details'];
+    const rows = logs.map(log => [
+      formatDate(log.timestamp) + ' ' + formatTime(log.timestamp),
+      log.user_name || 'System',
+      log.action,
+      formatAuditDetails(log)
+    ]);
+
+    generateAdminReport('System Audit Log', columns, rows);
+  } catch (error) {
+    console.error('Export error:', error);
+    showToast('Failed to generate report', 'error');
+  }
+}
+

@@ -969,11 +969,16 @@
 
     <!-- Societies Tab -->
     <div id="tab-societies" class="tab-content d-none">
-      <div class="page-header">
+      <div class="page-header d-flex justify-content-between align-items-center">
         <h2><i class="fas fa-building me-2"></i>Societies</h2>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#societyModal">
-          <i class="fas fa-plus me-2"></i>Add Society
-        </button>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-primary" onclick="exportSocietiesReport()">
+            <i class="fas fa-file-export me-2"></i>Export Societies
+          </button>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#societyModal">
+            <i class="fas fa-plus me-2"></i>Add Society
+          </button>
+        </div>
       </div>
       
       <div class="card">
@@ -1084,11 +1089,16 @@
 
     <!-- Users Tab -->
     <div id="tab-users" class="tab-content d-none">
-      <div class="page-header">
+      <div class="page-header d-flex justify-content-between align-items-center">
         <h2><i class="fas fa-users me-2"></i>Users</h2>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal">
-          <i class="fas fa-user-plus me-2"></i>Add User
-        </button>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-primary" onclick="exportUsersReport()">
+            <i class="fas fa-file-export me-2"></i>Export Users
+          </button>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal">
+            <i class="fas fa-user-plus me-2"></i>Add User
+          </button>
+        </div>
       </div>
       
       <div class="filter-bar">
@@ -1180,8 +1190,11 @@
 
     <!-- Audit Log Tab -->
     <div id="tab-audit" class="tab-content d-none">
-      <div class="page-header">
+      <div class="page-header d-flex justify-content-between align-items-center">
         <h2><i class="fas fa-history me-2"></i>Audit Log</h2>
+        <button class="btn btn-outline-primary" onclick="exportAuditLogReport()">
+          <i class="fas fa-file-export me-2"></i>Export Logs
+        </button>
       </div>
       
       <div class="card">

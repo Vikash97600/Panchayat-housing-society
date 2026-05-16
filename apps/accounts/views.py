@@ -421,8 +421,17 @@ class AuditLogListView(generics.ListAPIView):
     serializer_class = AuditLogSerializer
     permission_classes = [IsAdmin]
     
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'message': ''
+        })
+
     def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
+        return self.list(request, *args, **kwargs)
 
 
 class AssignCommitteeView(generics.GenericAPIView):
