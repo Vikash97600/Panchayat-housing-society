@@ -182,6 +182,15 @@ class UserListView(generics.ListAPIView):
             return CustomUser.objects.all().select_related('society').prefetch_related('resident_profile')
         return CustomUser.objects.filter(society=user.society).select_related('society').prefetch_related('resident_profile')
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'message': ''
+        })
+
 
 class ApproveUserView(generics.UpdateAPIView):
     queryset = CustomUser.objects.all()

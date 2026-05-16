@@ -1602,6 +1602,7 @@ window.loadComplaintDetails = loadComplaintDetails;
 window.updateComplaint = updateComplaint;
 window.addComplaintNote = addComplaintNote;
 window.loadAssignees = loadAssignees;
+window.exportResidentsReport = exportResidentsReport;
 
 // ============================================
 // Profile Management
@@ -1926,6 +1927,226 @@ document.addEventListener('click', function(e) {
 // ============================================
 // Resident Management
 // ============================================
+
+async function exportResidentsReport() {
+  try {
+    const res = await api.get('/auth/resident/list/');
+    const result = await res.json();
+    
+    if (!result.success || !result.data) {
+      showToast('Failed to load residents for export', 'error');
+      return;
+    }
+    
+    const residents = result.data;
+    const societyName = document.getElementById('society-name')?.textContent || 'Society Name';
+    
+    // Fetch committee members for signatures
+    let secretaryName = '_______________________';
+    let treasurerName = '_______________________';
+    try {
+      const usersRes = await api.get('/auth/users/');
+      const usersResult = await usersRes.json();
+      
+      // Handle various response structures (consistent wrapper vs DRF default/paginated)
+      const usersList = usersResult.data || usersResult.results || (Array.isArray(usersResult) ? usersResult : []);
+      
+      const sec = usersList.find(u => String(u.role).toLowerCase() === 'secretary');
+      const tre = usersList.find(u => String(u.role).toLowerCase() === 'treasurer');
+      
+      if (sec) {
+        const name = (sec.full_name || '').trim();
+        secretaryName = name || (sec.email ? sec.email.split('@')[0] : 'Secretary');
+      }
+      
+      if (tre) {
+        const name = (tre.full_name || '').trim();
+        treasurerName = name || (tre.email ? tre.email.split('@')[0] : 'Treasurer');
+      }
+    } catch (e) {
+      console.warn('Failed to load committee members for signatures', e);
+    }
+    
+    const printWindow = window.open('', '_blank');
+    
+    let html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Resident List Report</title>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+        body { 
+          font-family: 'Inter', sans-serif; 
+          padding: 40px; 
+          color: #1e293b;
+          margin: 0;
+          background: #fff;
+        }
+        .report-container {
+          max-width: 1000px;
+          margin: 0 auto;
+        }
+        .header { 
+          text-align: center; 
+          margin-bottom: 40px; 
+          border-bottom: 3px solid #3b82f6; 
+          padding-bottom: 24px; 
+        }
+        .society-name { 
+          font-size: 32px; 
+          font-weight: 700; 
+          color: #0f172a; 
+          margin: 0 0 8px 0; 
+          text-transform: uppercase; 
+          letter-spacing: 1.5px; 
+        }
+        .report-title { 
+          font-size: 18px; 
+          color: #64748b; 
+          font-weight: 500;
+          letter-spacing: 0.5px;
+        }
+        .meta-info {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 24px;
+          color: #475569;
+          font-size: 14px;
+        }
+        table { 
+          width: 100%; 
+          border-collapse: collapse; 
+          margin-bottom: 60px; 
+        }
+        th, td { 
+          border: 1px solid #e2e8f0; 
+          padding: 14px 16px; 
+          text-align: left; 
+        }
+        th { 
+          background-color: #f8fafc; 
+          color: #334155; 
+          font-weight: 600; 
+          font-size: 13px; 
+          text-transform: uppercase; 
+          letter-spacing: 0.5px; 
+        }
+        td {
+          font-size: 14px;
+        }
+        tr:nth-child(even) { background-color: #f8fafc; }
+        .footer { 
+          margin-top: 80px; 
+          display: flex; 
+          justify-content: space-between; 
+          padding: 0 40px;
+          page-break-inside: avoid; 
+        }
+        .signature-box { 
+          width: 200px; 
+          text-align: center; 
+        }
+        .signature-name {
+          font-size: 16px;
+          font-weight: 600;
+          color: #0f172a;
+          margin-bottom: 8px;
+          min-height: 24px; /* Ensure space even if empty */
+        }
+        .signature-line { 
+          border-top: 2px solid #334155; 
+          padding-top: 12px; 
+          font-weight: 600; 
+          color: #334155;
+          font-size: 15px;
+        }
+        @media print {
+          body { padding: 0; }
+          .report-container { max-width: none; }
+          @page { margin: 2cm; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="report-container">
+        <div class="header">
+          <h1 class="society-name">${societyName}</h1>
+          <div class="report-title">Official Resident Directory</div>
+        </div>
+        
+        <div class="meta-info">
+          <div><strong>Total Residents:</strong> ${residents.length}</div>
+          <div><strong>Date Generated:</strong> ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+        </div>
+        
+        <table>
+          <thead>
+            <tr>
+              <th width="5%">#</th>
+              <th width="25%">Name</th>
+              <th width="30%">Email</th>
+              <th width="12%">Flat No</th>
+              <th width="10%">Wing No</th>
+              <th width="18%">Mobile No</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+    
+    if (residents.length === 0) {
+      html += `<tr><td colspan="6" style="text-align:center; padding: 30px;">No residents found.</td></tr>`;
+    } else {
+      residents.forEach((r, index) => {
+        html += `
+          <tr>
+            <td>${index + 1}</td>
+            <td><strong>${r.user_name || '-'}</strong></td>
+            <td>${r.user_email || '-'}</td>
+            <td>${r.flat_no || '-'}</td>
+            <td>${r.wing_no || '-'}</td>
+            <td>${r.mobile_no || '-'}</td>
+          </tr>
+        `;
+      });
+    }
+    
+    html += `
+          </tbody>
+        </table>
+        
+        <div class="footer">
+          <div class="signature-box">
+            <div class="signature-name">${secretaryName}</div>
+            <div class="signature-line">Secretary</div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-name">${treasurerName}</div>
+            <div class="signature-line">Treasurer</div>
+          </div>
+        </div>
+      </div>
+      
+      <script>
+        window.onload = function() {
+          setTimeout(() => {
+            window.print();
+          }, 500);
+        };
+      </script>
+    </body>
+    </html>
+    `;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+    
+  } catch (e) {
+    console.error('Export error:', e);
+    showToast('An error occurred during export', 'error');
+  }
+}
+
 async function loadResidents() {
   try {
     const res = await api.get('/auth/resident/list/');
