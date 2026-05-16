@@ -8,8 +8,15 @@ from django.http import FileResponse
 from django.core.exceptions import ObjectDoesNotExist
 import os
 
-from common.services.pdf_service import extract_pdf_text, PDFEmptyError, PDFExtractionError
-from common.services.ai_service import call_gemini_service, AIConfigurationError, AIQuotaExceededError, AIGenericError
+from common.services.pdf_service import extract_pdf_text, PDFEmptyError, PDFExtractionError, chunk_text
+from common.services.groq_bylaw_service import (
+    sanitize_question,
+    retrieve_relevant_chunks,
+    call_groq_bylaw,
+    GroqConfigError,
+    GroqRateLimitError,
+    GroqServiceError,
+)
 from common.services.bylaw_service import get_bylaw_for_user, BylawNotFoundError, BylawTextEmptyError
 from apps.accounts.views import log_audit
 from apps.accounts.models import Society
@@ -146,6 +153,18 @@ class BylawUploadView(generics.CreateAPIView):
 
 
 class BylawAskView(APIView):
+    """
+    Resident-facing bylaw Q&A endpoint.
+
+    Pipeline:
+      1. Authenticate user and block admin role
+      2. Fetch user's society bylaw (multi-tenant isolated)
+      3. Check cache for an existing answer
+      4. Sanitise question (prompt-injection prevention)
+      5. Chunk bylaw text and retrieve top relevant chunks
+      6. Call Groq LLM with context + question
+      7. Cache and return answer
+    """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
@@ -155,22 +174,20 @@ class BylawAskView(APIView):
         question = serializer.validated_data['question']
         bylaw_id = serializer.validated_data.get('bylaw_id')
         user = request.user
-        
+
         if user.role == 'admin':
             return Response({
                 'success': False,
                 'message': 'Admin cannot ask questions about bylaws'
             }, status=status.HTTP_403_FORBIDDEN)
 
-        cache_key = f"bylaw_ask_{bylaw_id or 'auto'}_{question[:50]}"
+        # ── Cache check (keyed per society + question for isolation) ─────────
+        cache_key = f"bylaw_ask_{user.society_id}_{bylaw_id or 'auto'}_{question[:50]}"
         cached = cache.get(cache_key)
         if cached:
-            return Response({
-                'success': True,
-                'data': cached,
-                'message': ''
-            })
+            return Response({'success': True, 'data': cached, 'message': ''})
 
+        # ── Fetch bylaw (enforces society isolation) ──────────────────────────
         try:
             bylaw = get_bylaw_for_user(user, bylaw_id)
         except BylawNotFoundError as e:
@@ -189,28 +206,39 @@ class BylawAskView(APIView):
                 'message': str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        # ── Sanitise question ─────────────────────────────────────────────────
         try:
-            system_prompt = f"""You are a helpful assistant for {bylaw.society.name} housing society in India.
-Your job is to answer resident questions based ONLY on the official society bye-laws provided below.
+            clean_question = sanitize_question(question)
+        except ValueError as e:
+            return Response({
+                'success': False,
+                'message': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-Rules:
-1. Answer ONLY from the bye-law text. Do not use outside knowledge.
-2. Always cite the specific Rule number and Section name.
-3. Be friendly, clear, and concise — maximum 4 sentences.
-4. If not found in bye-laws: "This topic is not covered in the uploaded bye-laws. Please contact the committee directly."
-5. Never make up rules.
+        # ── Chunk and retrieve relevant context ───────────────────────────────
+        bylaw_text = bylaw.extracted_text or ""
+        if not bylaw_text.strip():
+            return Response({
+                'success': False,
+                'message': 'Bylaw PDF missing or corrupted. No text could be extracted.'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-Society Bye-Laws:
----
-{bylaw.extracted_text[:12000]}
----"""
-            
-            answer = call_gemini_service(system_prompt, question)
+        chunks = chunk_text(bylaw_text, chunk_size=800, overlap=100)
+        relevant_chunks = retrieve_relevant_chunks(chunks, clean_question, top_k=5)
+
+        # ── Call Groq ─────────────────────────────────────────────────────────
+        try:
+            answer = call_groq_bylaw(
+                society_name=bylaw.society.name,
+                context_chunks=relevant_chunks,
+                question=clean_question,
+            )
 
             response_data = {
                 'answer': answer,
                 'question': question,
-                'bylaw_id': bylaw.id
+                'bylaw_id': bylaw.id,
+                'chunks_used': len(relevant_chunks),
             }
 
             cache.set(cache_key, response_data, 3600)
@@ -221,24 +249,35 @@ Society Bye-Laws:
                 'message': ''
             })
 
-        except AIConfigurationError as e:
-            logger.error(f"Bylaw AI Config Error: {e}")
+        except GroqConfigError as e:
+            logger.error(f"Bylaw Groq config error: {e}")
             return Response({
                 'success': False,
                 'message': str(e)
             }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        except AIQuotaExceededError as e:
-            logger.error(f"Bylaw AI Quota Error: {e}")
+
+        except GroqRateLimitError as e:
+            logger.warning(f"Bylaw Groq rate limit: {e}")
             return Response({
                 'success': False,
                 'message': str(e)
             }, status=status.HTTP_429_TOO_MANY_REQUESTS)
-        except Exception as e:
-            logger.error(f"Bylaw AI error: {e}")
+
+        except GroqServiceError as e:
+            logger.error(f"Bylaw Groq service error: {e}")
             return Response({
                 'success': False,
-                'message': 'AI service unavailable. Please try again later.'
+                'message': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        except Exception as e:
+            logger.error(f"Unexpected bylaw AI error: {e}")
+            return Response({
+                'success': False,
+                'message': 'Unable to process request at the moment. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 class BylawDownloadView(APIView):
