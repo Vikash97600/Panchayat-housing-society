@@ -80,11 +80,11 @@ function sendQuestion(question, bylawId = null) {
     },
     body: JSON.stringify(requestBody)
   })
-  .then(res => res.json())
-  .then(data => {
-    console.log('[BYLAW] Response:', data);
+  .then(async res => {
+    const data = await res.json();
     loadingDiv.remove();
-    if (data.success) {
+    
+    if (res.ok && data.success) {
       appendMessage('ai', data.data.answer, 'Source: Bylaws');
     } else {
       appendMessage('ai', data.message || 'Sorry, I could not answer that.', '');
@@ -94,7 +94,7 @@ function sendQuestion(question, bylawId = null) {
   .catch(err => {
     console.error('[BYLAW] Error:', err);
     loadingDiv.remove();
-    appendMessage('ai', 'Sorry, something went wrong.', '');
+    appendMessage('ai', 'Sorry, an unexpected error occurred while communicating with the server.', '');
     showToast('Failed to get response', 'error');
   });
 }
@@ -135,8 +135,8 @@ function clearChat() {
   renderChat();
 }
 
-function askBylaw(question, bylawId = 1) {
-  sendQuestion(question, bylawId);
+function askBylaw(question, bylawId = null) {
+  sendQuestion(question, bylawId || currentBylawId);
 }
 
 async function initBylawChat() {

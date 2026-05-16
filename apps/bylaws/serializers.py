@@ -13,6 +13,17 @@ class BylawSerializer(serializers.ModelSerializer):
         read_only_fields = ['uploaded_at', 'extracted_text']
 
 
+class BylawListSerializer(serializers.ModelSerializer):
+    uploaded_by_name = serializers.CharField(source='uploaded_by.full_name', read_only=True)
+    society_name = serializers.CharField(source='society.name', read_only=True)
+
+    class Meta:
+        model = Bylaw
+        fields = ['id', 'society', 'society_name', 'title', 'pdf_path', 'version', 
+                  'uploaded_by', 'uploaded_by_name', 'uploaded_at', 'is_active']
+        read_only_fields = ['uploaded_at']
+
+
 class BylawUploadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bylaw

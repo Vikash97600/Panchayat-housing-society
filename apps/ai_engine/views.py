@@ -14,6 +14,7 @@ import json
 from apps.ai_engine.gemini_client import call_gemini
 from apps.ai_engine.groq_client import transcribe_audio, validate_audio_file
 from apps.complaints.models import Complaint
+from apps.complaints.models import Complaint
 from apps.bylaws.models import Bylaw
 
 logger = logging.getLogger(__name__)
@@ -122,80 +123,6 @@ class VoiceTranscribeView(APIView):
             logger.error(f"Transcription error: {e}")
             return Response(
                 {'success': False, 'message': 'Transcription failed. Please try again.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-class BylawAskView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    throttle_classes = [UserRateThrottle]
-    
-    def post(self, request):
-        question = request.data.get('question', '').strip()
-        bylaw_id = request.data.get('bylaw_id')
-        
-        if not question:
-            return Response(
-                {'success': False, 'message': 'Question is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        if not bylaw_id:
-            return Response(
-                {'success': False, 'message': 'Bylaw ID is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        cache_key = f"bylaw_qa_{bylaw_id}_{md5(question.encode()).hexdigest()}"
-        cached = cache.get(cache_key)
-        if cached:
-            return Response({'success': True, 'data': cached, 'cached': True})
-        
-        try:
-            bylaw = Bylaw.objects.get(id=bylaw_id, is_active=True)
-        except Bylaw.DoesNotExist:
-            return Response(
-                {'success': False, 'message': 'Bylaw not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        if not bylaw.extracted_text:
-            return Response(
-                {'success': False, 'message': 'Bylaw text not available'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        society_name = bylaw.society.name
-        system_prompt = f"""You are a helpful assistant for {society_name} housing society in India.
-Your job is to answer resident questions based ONLY on the official society bye-laws provided below.
-
-Rules you must follow:
-1. Answer ONLY from the bye-law text. Do not use outside knowledge.
-2. Always cite the specific Rule number and Section name.
-3. Be friendly, clear, and concise — maximum 4 sentences.
-4. If the answer is not found in the bye-laws, respond exactly:
-   "This topic is not covered in the uploaded bye-laws. Please contact the committee directly."
-5. Never make up or assume rules that are not written.
-
-Society Bye-Laws:
----
-{bylaw.extracted_text[:12000]}
----"""
-        
-        try:
-            answer = call_gemini(system_prompt, question)
-            data = {
-                "answer": answer,
-                "question": question,
-                "bylaw_id": bylaw_id,
-                "society": society_name
-            }
-            cache.set(cache_key, data, timeout=3600)
-            return Response({'success': True, 'data': data})
-        except Exception as e:
-            logger.error(f"Bylaw AI error: {e}")
-            return Response(
-                {'success': False, 'message': 'AI service unavailable. Please try again later.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

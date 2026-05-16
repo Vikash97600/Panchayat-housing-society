@@ -7,16 +7,17 @@ from django.core.cache import cache
 from django.http import FileResponse
 from django.core.exceptions import ObjectDoesNotExist
 import os
-import logging
 
-from apps.ai_engine.gemini_client import call_gemini
-from apps.ai_engine.utils import extract_pdf_text
+from common.services.pdf_service import extract_pdf_text, PDFEmptyError, PDFExtractionError
+from common.services.ai_service import call_gemini_service, AIConfigurationError, AIQuotaExceededError, AIGenericError
+from common.services.bylaw_service import get_bylaw_for_user, BylawNotFoundError, BylawTextEmptyError
 from apps.accounts.views import log_audit
 from apps.accounts.models import Society
 from .models import Bylaw
-from .serializers import BylawSerializer, BylawAskSerializer
+from .serializers import BylawSerializer, BylawListSerializer, BylawAskSerializer
+from common.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class IsAdminOrCommittee(permissions.BasePermission):
@@ -25,8 +26,8 @@ class IsAdminOrCommittee(permissions.BasePermission):
 
 
 class BylawListView(generics.ListAPIView):
-    serializer_class = BylawSerializer
-    permission_classes = [IsAdminOrCommittee]
+    serializer_class = BylawListSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
@@ -104,12 +105,19 @@ class BylawUploadView(generics.CreateAPIView):
         try:
             extracted_text = extract_pdf_text(pdf_file)
             page_count = extracted_text.count('--- Page')
-        except Exception as e:
+        except PDFEmptyError as e:
+            logger.warning(f"PDF extraction warning: {e}")
+            return Response({
+                'success': False,
+                'data': {},
+                'message': 'The uploaded PDF appears to be empty or unreadable.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except PDFExtractionError as e:
             logger.error(f"PDF extraction error: {e}")
             return Response({
                 'success': False,
                 'data': {},
-                'message': 'Failed to extract PDF text. Please try again.'
+                'message': 'Failed to extract PDF text. The file might be corrupted.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         bylaw = Bylaw.objects.create(
@@ -146,7 +154,6 @@ class BylawAskView(APIView):
 
         question = serializer.validated_data['question']
         bylaw_id = serializer.validated_data.get('bylaw_id')
-
         user = request.user
         
         if user.role == 'admin':
@@ -154,13 +161,6 @@ class BylawAskView(APIView):
                 'success': False,
                 'message': 'Admin cannot ask questions about bylaws'
             }, status=status.HTTP_403_FORBIDDEN)
-        
-        society = user.society
-        if not society:
-            return Response({
-                'success': False,
-                'message': 'User is not associated with any society'
-            }, status=status.HTTP_400_BAD_REQUEST)
 
         cache_key = f"bylaw_ask_{bylaw_id or 'auto'}_{question[:50]}"
         cached = cache.get(cache_key)
@@ -172,26 +172,21 @@ class BylawAskView(APIView):
             })
 
         try:
-            if bylaw_id:
-                bylaw = Bylaw.objects.get(id=bylaw_id, society=society, is_active=True)
-            else:
-                bylaw = Bylaw.objects.filter(society=society, is_active=True).first()
-                
-            if not bylaw:
-                return Response({
-                    'success': False,
-                    'message': 'No bylaws found for your society'
-                }, status=status.HTTP_404_NOT_FOUND)
-        except Bylaw.DoesNotExist:
+            bylaw = get_bylaw_for_user(user, bylaw_id)
+        except BylawNotFoundError as e:
             return Response({
                 'success': False,
-                'message': 'Bylaw not found'
+                'message': str(e)
             }, status=status.HTTP_404_NOT_FOUND)
-
-        if not bylaw.extracted_text:
+        except BylawTextEmptyError as e:
             return Response({
                 'success': False,
-                'message': 'Bylaw text not available'
+                'message': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -210,12 +205,12 @@ Society Bye-Laws:
 {bylaw.extracted_text[:12000]}
 ---"""
             
-            answer = call_gemini(system_prompt, question)
+            answer = call_gemini_service(system_prompt, question)
 
             response_data = {
                 'answer': answer,
                 'question': question,
-                'bylaw_id': bylaw_id
+                'bylaw_id': bylaw.id
             }
 
             cache.set(cache_key, response_data, 3600)
@@ -226,6 +221,18 @@ Society Bye-Laws:
                 'message': ''
             })
 
+        except AIConfigurationError as e:
+            logger.error(f"Bylaw AI Config Error: {e}")
+            return Response({
+                'success': False,
+                'message': str(e)
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except AIQuotaExceededError as e:
+            logger.error(f"Bylaw AI Quota Error: {e}")
+            return Response({
+                'success': False,
+                'message': str(e)
+            }, status=status.HTTP_429_TOO_MANY_REQUESTS)
         except Exception as e:
             logger.error(f"Bylaw AI error: {e}")
             return Response({

@@ -499,22 +499,22 @@ class AssignCommitteeView(generics.GenericAPIView):
         }, status=status.HTTP_201_CREATED)
 
 
-class IsSecretary(permissions.BasePermission):
+class IsSecretaryOrTreasurer(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role == 'secretary'
+        return request.user.is_authenticated and request.user.role in ['secretary', 'treasurer', 'committee']
 
 
 class AddResidentView(generics.GenericAPIView):
     serializer_class = AddResidentSerializer
-    permission_classes = [IsSecretary]
+    permission_classes = [IsSecretaryOrTreasurer]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        secretary = request.user
-        society = secretary.society
+        committee_user = request.user
+        society = committee_user.society
 
         if CustomUser.objects.filter(email=data['email']).exists():
             return Response({
@@ -570,11 +570,11 @@ class AddResidentView(generics.GenericAPIView):
 
 class ResidentListView(generics.ListAPIView):
     serializer_class = ResidentSerializer
-    permission_classes = [IsSecretary]
+    permission_classes = [IsSecretaryOrTreasurer]
 
     def get_queryset(self):
-        secretary = self.request.user
-        return Resident.objects.filter(society=secretary.society).select_related('user', 'society')
+        committee_user = self.request.user
+        return Resident.objects.filter(society=committee_user.society).select_related('user', 'society')
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
