@@ -147,63 +147,123 @@ class AISummaryView(APIView):
     
     def get(self, request):
         force_refresh = request.query_params.get('refresh') == 'true'
-        cache_key = f"ai_summary_{request.user.society_id}_{date.today()}"
-        
+        user = request.user
+
+        # Use timezone-aware local date (respects TIME_ZONE = 'Asia/Kolkata')
+        today = timezone.localdate()
+
+        # Build today's complaint queryset scoped to the user's society
+        # Use __date filter with timezone-aware datetime boundaries for accuracy
+        today_start = timezone.make_aware(datetime.combine(today, datetime.min.time()))
+        today_end   = timezone.make_aware(datetime.combine(today, datetime.max.time()))
+
+        base_qs = Complaint.objects.filter(
+            created_at__gte=today_start,
+            created_at__lte=today_end
+        ).select_related('submitted_by', 'society')
+
+        if user.role == 'admin':
+            society_id = request.query_params.get('society_id')
+            if society_id:
+                base_qs = base_qs.filter(society_id=society_id)
+            society_key = society_id or 'all'
+        else:
+            if not getattr(user, 'society', None):
+                return Response({'success': True, 'data': {
+                    'summary': 'No society assigned to your account.',
+                    'headline': 'No society assigned.',
+                    'complaint_count': 0,
+                    'today_categories': [],
+                    'generated_at': datetime.now().isoformat()
+                }})
+            base_qs = base_qs.filter(society=user.society)
+            society_key = user.society_id
+
+        # Never cache "no complaints" — always fetch fresh so new complaints show immediately
+        cache_key = f"ai_summary_{society_key}_{today}"
+
         if not force_refresh:
             cached = cache.get(cache_key)
-            if cached:
+            if cached and cached.get('complaint_count', 0) > 0:
                 return Response({'success': True, 'data': cached, 'cached': True})
-        
-        today_complaints = Complaint.objects.filter(
-            society=request.user.society,
-            created_at__date=date.today()
-        ).select_related('submitted_by')
-        
-        if not today_complaints.exists():
+
+        today_complaints = list(base_qs)
+        count = len(today_complaints)
+
+        category_labels = {
+            'plumbing': 'Plumbing', 'electrical': 'Electrical', 'lift': 'Lift',
+            'parking': 'Parking', 'noise': 'Noise', 'cleanliness': 'Cleanliness',
+            'security': 'Security', 'other': 'Other',
+        }
+        seen = set()
+        today_categories = []
+        for c in today_complaints:
+            label = category_labels.get(c.category, c.category.capitalize())
+            if label not in seen:
+                seen.add(label)
+                today_categories.append(label)
+
+        if count == 0:
+            # Do NOT cache zero — so the next real request picks up fresh complaints
             return Response({'success': True, 'data': {
-                'summary': 'No complaints submitted today.',
+                'summary': '',
+                'headline': 'No complaints submitted today.',
                 'complaint_count': 0,
+                'today_categories': [],
                 'generated_at': datetime.now().isoformat()
             }})
-        
+
+        cats_str = ', '.join(today_categories) if today_categories else 'General'
+        headline = f"{count} complaint{'s' if count != 1 else ''} submitted today related to {cats_str}."
+
+        # Build AI narrative (optional — graceful fallback)
         complaints_list = []
         for c in today_complaints[:30]:
             complaints_list.append({
                 'id': c.id,
                 'title': c.title,
-                'description': c.description,
+                'description': c.description or '',
                 'priority': c.priority,
                 'category': c.category,
-                'flat_no': c.submitted_by.flat_no if hasattr(c.submitted_by, 'flat_no') else '-'
+                'flat_no': getattr(c.submitted_by, 'flat_no', '-') or '-'
             })
-        
+
         complaints_json = json.dumps(complaints_list, default=str)
         prompt = AI_SUMMARY_PROMPT.format(complaints_json=complaints_json)
-        
+
         try:
             summary_text = call_gemini(
                 system_prompt="You are a concise housing society assistant.",
                 user_message=prompt,
                 max_tokens=512
             )
-            unique_flats = today_complaints.values('submitted_by').distinct().count()
+            unique_flats = base_qs.values('submitted_by').distinct().count()
             data = {
                 'summary': summary_text,
-                'complaint_count': today_complaints.count(),
+                'headline': headline,
+                'complaint_count': count,
+                'today_categories': today_categories,
                 'unique_flats': unique_flats,
                 'generated_at': datetime.now().isoformat()
             }
-            cache.set(cache_key, data, timeout=300)
+            cache.set(cache_key, data, timeout=120)   # 2 min cache when complaints exist
             return Response({'success': True, 'data': data})
         except Exception as e:
             logger.error(f"AI summary error: {e}")
-            return Response(
-                {'success': False, 'message': 'AI service unavailable. Please try again later.'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            data = {
+                'summary': '',
+                'headline': headline,
+                'complaint_count': count,
+                'today_categories': today_categories,
+                'generated_at': datetime.now().isoformat()
+            }
+            # Still cache the structured data even without AI narrative
+            cache.set(cache_key, data, timeout=60)
+            return Response({'success': True, 'data': data})
 
 
 MAINTENANCE_PROMPT = """Explain this housing society maintenance expense breakdown in simple, friendly language for a resident — not an accountant.
+
 Keep it to 2 to 3 sentences only. Mention the biggest expense.
 Do not use accounting jargon.
 

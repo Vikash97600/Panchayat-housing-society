@@ -182,23 +182,67 @@ function switchTab(tabId) {
 }
 
 // Dashboard - AI Summary
-async function loadAISummary() {
+let _aiSummaryTimer = null;
+
+async function loadAISummary(forceRefresh = false) {
   const content = document.getElementById('ai-summary-content');
-  content.innerHTML = '<div class="spinner"></div>';
+  if (!content) return;
+
+  if (!forceRefresh && content.querySelector('.spinner')) {
+    content.innerHTML = '<div class="spinner"></div>';
+  }
   
   try {
-    const res = await api.get('/ai/summary/');
+    const url = forceRefresh ? '/ai/summary/?refresh=true' : '/ai/summary/';
+    const res = await api.get(url);
     const data = await res.json();
-    if (data.success) {
-      content.innerHTML = `<p>${data.data.summary.replace(/\n/g, '<br>')}</p>
-        <small class="text-muted">Generated at ${new Date(data.data.generated_at).toLocaleTimeString()}</small>`;
+
+    if (data.success && data.data) {
+      const d = data.data;
+      const count = d.complaint_count || 0;
+      const categories = d.today_categories || [];
+      const generatedAt = d.generated_at ? new Date(d.generated_at).toLocaleTimeString() : '';
+
+      let headlineHtml = '';
+      if (count === 0) {
+        headlineHtml = `
+          <div style="display:inline-flex;align-items:center;gap:8px;background:#e8f5e9;color:#2e7d32;padding:10px 16px;border-radius:8px;font-weight:600;margin-bottom:12px;">
+            <i class="fas fa-check-circle"></i>
+            No complaints submitted today.
+          </div>`;
+      } else {
+        const headline = d.headline || `${count} complaint${count !== 1 ? 's' : ''} submitted today related to ${categories.join(', ')}.`;
+        const categoryBadges = categories.map(cat =>
+          `<span style="display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.25);border-radius:12px;font-size:12px;margin-right:2px;">${cat}</span>`
+        ).join('');
+        headlineHtml = `
+          <div style="background:linear-gradient(135deg,#1565c0,#1e88e5);color:#fff;border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+            <div style="font-size:15px;font-weight:700;margin-bottom:6px;">
+              <i class="fas fa-exclamation-circle me-2" style="color:#FFD54F;"></i>${headline}
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">${categoryBadges}</div>
+          </div>`;
+      }
+
+      let narrativeHtml = '';
+      if (d.summary && d.summary.trim()) {
+        narrativeHtml = `<div style="font-size:13px;color:var(--text-secondary,#666);line-height:1.6;">${d.summary.replace(/\n/g, '<br>')}</div>`;
+      }
+
+      content.innerHTML = headlineHtml + narrativeHtml +
+        `<small class="text-muted d-block mt-2">Updated at ${generatedAt}${data.cached ? ' · cached' : ''}</small>`;
     } else {
       content.innerHTML = '<p class="text-danger">No summary available</p>';
     }
   } catch (e) {
-    content.innerHTML = '<p class="text-danger">Failed to load summary</p>';
+    content.innerHTML = '<p class="text-danger">Failed to load summary. Check your connection.</p>';
   }
+
+  // Auto-refresh every 60 seconds
+  clearTimeout(_aiSummaryTimer);
+  _aiSummaryTimer = setTimeout(() => loadAISummary(false), 60000);
 }
+
 
 async function loadDashboard() {
   loadAISummary();
