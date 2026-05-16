@@ -1079,6 +1079,500 @@ async function updateBookingStatus(bookingId, newStatus) {
   }
 }
 
+// Services
+async function loadServices() {
+  const tbody = document.getElementById('services-tbody');
+  tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4"><div class="spinner"></div></td></tr>';
+  
+  try {
+    const res = await api.get('/services/');
+    const data = await res.json();
+    const services = data.results || [];
+    
+    if (services.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" class="text-center text-muted py-4">
+            <div class="empty-state">
+              <i class="fas fa-tools empty-state-icon"></i>
+              <h4>No Services</h4>
+              <p>Add your first service to get started</p>
+            </div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+    
+tbody.innerHTML = services.map(s => {
+      const serviceName = s.name || 'N/A';
+      const vendorName = s.vendor_name || '-';
+      const vendorPhone = s.vendor_phone || '-';
+      const price = s.price_per_slot || 0;
+      const isActive = s.is_active;
+      const updatedAt = s.updated_at;
+      const updatedByName = s.updated_by_name;
+      
+      const statusBadge = `<span class="badge badge-${isActive ? 'success' : 'secondary'}">${isActive ? 'Active' : 'Inactive'}</span>`;
+      
+      const lastModified = updatedAt && updatedAt !== null && updatedAt !== '' ? 
+        new Date(updatedAt).toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        }) : 'Never';
+      
+      const modifiedBy = updatedByName && updatedByName !== null && updatedByName !== '' ? '<br>' + updatedByName : '';
+      
+      return `
+        <tr data-service-id="${s.id}">
+          <td style="width: 40px;" class="text-center">
+            <input type="checkbox" class="service-checkbox" value="${s.id}">
+          </td>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="avatar avatar-sm" style="background: var(--brand-light); color: var(--brand-primary);">
+                <i class="fas fa-tools"></i>
+              </div>
+              <strong>${serviceName}</strong>
+            </div>
+          </td>
+          <td>${vendorName}</td>
+          <td>${vendorPhone}</td>
+          <td>₹${price}</td>
+          <td>${statusBadge}</td>
+          <td>
+            <small class="text-muted">
+              ${lastModified}${modifiedBy}
+            </small>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary edit-btn" onclick="editService(${s.id})" data-service-id="${s.id}" title="Edit Service">
+              <i class="fas fa-edit"></i> Edit
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    
+    // Reset select-all checkbox
+    if (document.getElementById('select-all-services')) {
+      document.getElementById('select-all-services').checked = false;
+    }
+    
+    // Update bulk action buttons
+    updateBulkActions();
+  } catch (e) {
+    console.error('Services load error:', e);
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">Failed to load services</td></tr>';
+  }
+}
+
+async function saveService() {
+  // Client-side validation
+  const name = document.getElementById('service-name').value.trim();
+  const price = document.getElementById('service-price').value;
+  
+  if (!name) {
+    showToast('Service name is required', 'error');
+    document.getElementById('service-name').focus();
+    return;
+  }
+  
+  if (!price || parseFloat(price) < 0) {
+    showToast('Please enter a valid price', 'error');
+    document.getElementById('service-price').focus();
+    return;
+  }
+  
+  const serviceId = document.getElementById('service-id')?.value;
+  const isActive = document.getElementById('service-active').checked;
+  
+  // Confirmation for deactivation
+  if (serviceId && !isActive) {
+    if (!confirm('Are you sure you want to deactivate this service? Residents will no longer be able to book it.')) {
+      return;
+    }
+  }
+  
+  const data = {
+    name: name,
+    description: document.getElementById('service-desc').value.trim(),
+    vendor_name: document.getElementById('service-vendor').value.trim(),
+    vendor_phone: document.getElementById('service-phone').value.trim(),
+    price_per_slot: parseFloat(price),
+    is_active: isActive
+  };
+  
+  const btn = document.querySelector('#serviceModal .btn-primary');
+  setButtonLoading(btn, true);
+  
+  try {
+    let res, result;
+    
+    if (serviceId) {
+      // Update existing service
+      res = await api.put(`/services/${serviceId}/update/`, data);
+      result = await res.json();
+      
+      if (res.ok && result.success) {
+        showToast('Service updated successfully', 'success');
+      } else {
+        showToast(result.message || 'Failed to update service', 'error');
+      }
+    } else {
+      // Create new service
+      res = await api.post('/services/create/', data);
+      result = await res.json();
+      
+      if (res.ok && result.success) {
+        showToast('Service created successfully', 'success');
+      } else {
+        showToast(result.message || 'Failed to create service', 'error');
+      }
+    }
+    
+    if (res.ok && result.success) {
+      bootstrap.Modal.getInstance(document.getElementById('serviceModal')).hide();
+      document.getElementById('service-form').reset();
+      document.getElementById('service-id')?.remove();
+      loadServices();
+    }
+  } catch (e) {
+    showToast('Error saving service', 'error');
+  }
+  
+  setButtonLoading(btn, false);
+}
+
+async function loadServicesForSlots() {
+  const select = document.getElementById('slot-service');
+  if (!select) return;
+  
+  try {
+    const res = await api.get('/services/');
+    const data = await res.json();
+    const services = data.results || [];
+    
+    select.innerHTML = '<option value="">Choose a service...</option>' +
+      services.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  } catch (e) {
+    console.error('Error loading services for slots:', e);
+  }
+}
+
+async function generateSlots() {
+  const serviceId = document.getElementById('slot-service').value;
+  const startDate = document.getElementById('slot-start-date').value;
+  const endDate = document.getElementById('slot-end-date').value;
+  const startTime = document.getElementById('slot-start-time').value || '09:00';
+  const endTime = document.getElementById('slot-end-time').value || '18:00';
+  
+  if (!serviceId || !startDate || !endDate) {
+    showToast('Please fill all required fields', 'error');
+    return;
+  }
+  
+  const btn = document.querySelector('#generateSlotsModal .btn-primary');
+  setButtonLoading(btn, true);
+  
+  try {
+    const res = await api.post('/services/generate-slots/', {
+      service_id: serviceId,
+      start_date: startDate,
+      end_date: endDate,
+      start_time: startTime,
+      end_time: endTime
+    });
+    const result = await res.json();
+    
+    if (res.ok && result.success) {
+      showToast(result.message, 'success');
+      bootstrap.Modal.getInstance(document.getElementById('generateSlotsModal')).hide();
+      document.getElementById('generate-slots-form').reset();
+    } else {
+      showToast(result.message || 'Failed to generate slots', 'error');
+    }
+  } catch (e) {
+    showToast('Error generating slots', 'error');
+  }
+  
+  setButtonLoading(btn, false);
+}
+
+document.getElementById('generateSlotsModal')?.addEventListener('show.bs.modal', function() {
+  loadServicesForSlots();
+  
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('slot-start-date').min = today;
+  document.getElementById('slot-end-date').min = today;
+});
+
+async function editService(serviceId) {
+  console.log('[COMMITTEE] editService called with ID:', serviceId);
+  
+  // Show loading on the button
+  const editBtn = document.querySelector(`.edit-btn[data-service-id="${serviceId}"]`);
+  if (editBtn) {
+    editBtn.disabled = true;
+    editBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+  }
+  
+  try {
+    const res = await api.get(`/services/${serviceId}/`);
+    if (!res.ok) {
+      console.error('[COMMITTEE] API error:', res.status, res.statusText);
+      showToast('Failed to load service details', 'error');
+      return;
+    }
+    const data = await res.json();
+    console.log('[COMMITTEE] Service data received:', data);
+    
+    if (data && data.id) {
+      // Set service ID in hidden field
+      let idField = document.getElementById('service-id');
+      if (!idField) {
+        idField = document.createElement('input');
+        idField.type = 'hidden';
+        idField.id = 'service-id';
+        document.getElementById('service-form').appendChild(idField);
+      }
+      idField.value = serviceId;
+      
+      // Populate form fields
+      document.getElementById('service-name').value = data.name || '';
+      document.getElementById('service-desc').value = data.description || '';
+      document.getElementById('service-vendor').value = data.vendor_name || '';
+      document.getElementById('service-phone').value = data.vendor_phone || '';
+      document.getElementById('service-price').value = data.price_per_slot || '0';
+      document.getElementById('service-active').checked = data.is_active !== false;
+      
+      // Update modal title
+      document.querySelector('#serviceModal .modal-title').innerHTML = '<i class="fas fa-edit me-2"></i>Edit Service';
+      document.querySelector('#serviceModal .btn-primary').innerHTML = '<i class="fas fa-save me-2"></i>Update Service';
+      
+      // Show modal
+      const modalElement = document.getElementById('serviceModal');
+      const modal = new bootstrap.Modal(modalElement);
+      modal.show();
+      console.log('[COMMITTEE] Modal shown successfully');
+    } else {
+      console.error('[COMMITTEE] Invalid service data:', data);
+      showToast('Failed to load service details', 'error');
+    }
+  } catch (e) {
+    console.error('[COMMITTEE] Error loading service:', e);
+    showToast('Failed to load service details', 'error');
+  } finally {
+    // Reset button
+    if (editBtn) {
+      editBtn.disabled = false;
+      editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+    }
+  }
+}
+
+// Reset service form when modal closes
+document.getElementById('serviceModal')?.addEventListener('hidden.bs.modal', function() {
+  const idField = document.getElementById('service-id');
+  if (idField) idField.remove();
+  if (document.getElementById('service-form')) {
+    document.getElementById('service-form').reset();
+  }
+  if (document.querySelector('#serviceModal .modal-title')) {
+    document.querySelector('#serviceModal .modal-title').innerHTML = '<i class="fas fa-tools me-2"></i>Add New Service';
+  }
+  if (document.querySelector('#serviceModal .btn-primary')) {
+    document.querySelector('#serviceModal .btn-primary').innerHTML = '<i class="fas fa-save me-2"></i>Save Service';
+  }
+  if (document.getElementById('service-active')) {
+    document.getElementById('service-active').checked = true;
+  }
+});
+
+// Services search and filter
+document.getElementById('service-search')?.addEventListener('input', filterServices);
+document.getElementById('service-status-filter')?.addEventListener('change', filterServices);
+document.getElementById('clear-filters')?.addEventListener('click', clearServiceFilters);
+
+// Select all checkbox
+document.getElementById('select-all-services')?.addEventListener('change', function() {
+  const checkboxes = document.querySelectorAll('.service-checkbox');
+  checkboxes.forEach(cb => cb.checked = this.checked);
+  updateBulkActions();
+});
+
+// Individual checkboxes
+document.addEventListener('change', function(e) {
+  if (e.target.classList.contains('service-checkbox')) {
+    updateBulkActions();
+  }
+});
+
+// Bulk actions
+document.getElementById('bulk-delete-btn')?.addEventListener('click', bulkDeleteServices);
+document.getElementById('bulk-activate-btn')?.addEventListener('click', () => bulkUpdateServices(true));
+document.getElementById('bulk-deactivate-btn')?.addEventListener('click', () => bulkUpdateServices(false));
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key === 'e') {
+    e.preventDefault();
+    const selectedRow = document.querySelector('#services-table tbody tr.selected');
+    if (selectedRow) {
+      const serviceId = selectedRow.dataset.serviceId;
+      if (serviceId) editService(serviceId);
+    }
+  }
+});
+
+// Row selection for keyboard shortcuts (but don't interfere with checkboxes)
+document.addEventListener('click', function(e) {
+  // Don't select row if clicking on checkbox
+  if (e.target.classList.contains('service-checkbox')) return;
+  
+  const row = e.target.closest('#services-table tbody tr');
+  if (row) {
+    document.querySelectorAll('#services-table tbody tr').forEach(r => r.classList.remove('selected'));
+    row.classList.add('selected');
+  }
+});
+
+function filterServices() {
+  const searchInput = document.getElementById('service-search');
+  const statusSelect = document.getElementById('service-status-filter');
+  
+  if (!searchInput || !statusSelect) return;
+  
+  const searchTerm = searchInput.value.toLowerCase();
+  const statusFilter = statusSelect.value;
+  const rows = document.querySelectorAll('#services-tbody tr[data-service-id]');
+  
+  rows.forEach(row => {
+    // Cell indices: 0=checkbox, 1=service name, 2=vendor name, 3=vendor phone, 4=price, 5=status, 6=last modified, 7=actions
+    const serviceName = row.cells[1]?.textContent?.toLowerCase() || '';
+    const vendorName = row.cells[2]?.textContent?.toLowerCase() || '';
+    const statusText = row.cells[5]?.textContent?.toLowerCase()?.trim() || '';
+    const status = statusText.includes('active') ? 'active' : 'inactive';
+    
+    const matchesSearch = serviceName.includes(searchTerm) || vendorName.includes(searchTerm);
+    const matchesStatus = !statusFilter || status === statusFilter;
+    
+    row.style.display = matchesSearch && matchesStatus ? '' : 'none';
+  });
+  
+  // Update bulk action buttons after filtering
+  updateBulkActions();
+}
+
+function clearServiceFilters() {
+  if (document.getElementById('service-search')) document.getElementById('service-search').value = '';
+  if (document.getElementById('service-status-filter')) document.getElementById('service-status-filter').value = '';
+  filterServices();
+}
+
+function updateBulkActions() {
+  // Only count checkboxes from visible rows
+  const visibleRows = document.querySelectorAll('#services-tbody tr[data-service-id]:not([style*="display: none"])');
+  const checkedBoxes = visibleRows.length > 0 
+    ? document.querySelectorAll('#services-tbody tr[data-service-id]:not([style*="display: none"]) .service-checkbox:checked')
+    : document.querySelectorAll('.service-checkbox:checked');
+  
+  const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+  const bulkActivateBtn = document.getElementById('bulk-activate-btn');
+  const bulkDeactivateBtn = document.getElementById('bulk-deactivate-btn');
+  
+  if (bulkDeleteBtn && bulkActivateBtn && bulkDeactivateBtn) {
+    const hasSelection = checkedBoxes.length > 0;
+    bulkDeleteBtn.disabled = !hasSelection;
+    bulkActivateBtn.disabled = !hasSelection;
+    bulkDeactivateBtn.disabled = !hasSelection;
+    
+    // Update button text with count
+    const count = checkedBoxes.length;
+    if (count > 0) {
+      bulkDeleteBtn.innerHTML = `<i class="fas fa-trash me-2"></i>Delete Selected (${count})`;
+      bulkActivateBtn.innerHTML = `<i class="fas fa-check me-2"></i>Activate Selected (${count})`;
+      bulkDeactivateBtn.innerHTML = `<i class="fas fa-times me-2"></i>Deactivate Selected (${count})`;
+    } else {
+      bulkDeleteBtn.innerHTML = '<i class="fas fa-trash me-2"></i>Delete Selected';
+      bulkActivateBtn.innerHTML = '<i class="fas fa-check me-2"></i>Activate Selected';
+      bulkDeactivateBtn.innerHTML = '<i class="fas fa-times me-2"></i>Deactivate Selected';
+    }
+  }
+}
+
+async function bulkDeleteServices() {
+  const checkedBoxes = document.querySelectorAll('.service-checkbox:checked');
+  if (checkedBoxes.length === 0) {
+    showToast('Please select at least one service', 'warning');
+    return;
+  }
+  
+  const serviceIds = Array.from(checkedBoxes).map(cb => cb.value);
+  
+  if (!confirm(`Are you sure you want to delete ${serviceIds.length} service(s)? This action cannot be undone.`)) {
+    return;
+  }
+  
+  const btn = document.getElementById('bulk-delete-btn');
+  setButtonLoading(btn, true);
+  
+  try {
+    const deletePromises = serviceIds.map(id => api.delete(`/services/${id}/delete/`));
+    await Promise.all(deletePromises);
+    showToast(`${serviceIds.length} service(s) deleted successfully`, 'success');
+    loadServices();
+  } catch (e) {
+    console.error('Bulk delete error:', e);
+    showToast('Failed to delete some services', 'error');
+  } finally {
+    setButtonLoading(btn, false);
+  }
+}
+
+async function bulkUpdateServices(activate) {
+  const checkedBoxes = document.querySelectorAll('.service-checkbox:checked');
+  if (checkedBoxes.length === 0) {
+    showToast('Please select at least one service', 'warning');
+    return;
+  }
+  
+  const serviceIds = Array.from(checkedBoxes).map(cb => cb.value);
+  const action = activate ? 'activate' : 'deactivate';
+  const message = activate ? 'This will make the service available for residents.' : 'Residents will no longer be able to book this service.';
+  
+  if (!confirm(`Are you sure you want to ${action} ${serviceIds.length} service(s)?\n\n${message}`)) {
+    return;
+  }
+  
+  const btnId = activate ? 'bulk-activate-btn' : 'bulk-deactivate-btn';
+  const btn = document.getElementById(btnId);
+  setButtonLoading(btn, true);
+  
+  try {
+    const updatePromises = serviceIds.map(id => 
+      api.put(`/services/${id}/update/`, { is_active: activate })
+    );
+    const results = await Promise.all(updatePromises);
+    
+    // Check if all updates were successful
+    const allSuccess = results.every(r => r.ok);
+    if (allSuccess) {
+      showToast(`${serviceIds.length} service(s) ${action}d successfully`, 'success');
+      loadServices();
+    } else {
+      showToast('Some services could not be updated', 'warning');
+      loadServices();
+    }
+  } catch (e) {
+    console.error('Bulk update error:', e);
+    showToast(`Failed to ${action} some services`, 'error');
+  } finally {
+    setButtonLoading(btn, false);
+  }
+}
+
 // Export
 window.switchTab = switchTab;
 window.loadProfile = loadProfile;
@@ -1093,13 +1587,21 @@ window.loadMaintenance = loadMaintenance;
 window.loadDues = loadDues;
 window.markPaid = markPaid;
 window.loadBookings = loadBookings;
+window.loadServices = loadServices;
+window.saveService = saveService;
+window.editService = editService;
+window.filterServices = filterServices;
+window.clearServiceFilters = clearServiceFilters;
+window.updateBulkActions = updateBulkActions;
+window.bulkDeleteServices = bulkDeleteServices;
+window.bulkUpdateServices = bulkUpdateServices;
+window.generateSlots = generateSlots;
 window.editProfile = editProfile;
 window.updateBookingStatus = updateBookingStatus;
 window.loadComplaintDetails = loadComplaintDetails;
 window.updateComplaint = updateComplaint;
 window.addComplaintNote = addComplaintNote;
 window.loadAssignees = loadAssignees;
-window.editProfile = editProfile;
 
 // ============================================
 // Profile Management
@@ -1377,6 +1879,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (typeof initChat === 'function') {
         initChat();
       }
+    }
+    if (tabId === 'services') {
+      loadServices();
     }
     // Stop chat polling when leaving chat tab
     if (tabId !== 'chat' && typeof stopPolling === 'function') {

@@ -44,7 +44,16 @@ class ServiceListView(generics.ListAPIView):
                 return Service.objects.filter(society=society)
             return Service.objects.none()
         
-        return Service.objects.filter(is_active=True).order_by('-created_at')
+        society = user.society
+        if not society:
+            try:
+                society = user.resident_profile.society
+            except:
+                pass
+                
+        if society:
+            return Service.objects.filter(society=society, is_active=True).order_by('-created_at')
+        return Service.objects.none()
 
 
 class ServiceCreateView(generics.CreateAPIView):
@@ -98,7 +107,16 @@ class ServiceDetailView(generics.RetrieveAPIView):
                 return Service.objects.filter(society=society)
             return Service.objects.none()
         
-        return Service.objects.filter(is_active=True)
+        society = user.society
+        if not society:
+            try:
+                society = user.resident_profile.society
+            except:
+                pass
+                
+        if society:
+            return Service.objects.filter(society=society, is_active=True)
+        return Service.objects.none()
 
 
 class ServiceUpdateView(generics.UpdateAPIView):
@@ -254,12 +272,23 @@ class ServiceSlotsView(generics.ListAPIView):
             else:
                 queryset = ServiceSlot.objects.none()
         else:
-            queryset = ServiceSlot.objects.filter(
-                service__id=service_id,
-                service__is_active=True,
-                is_available=True,
-                slot_date__gte=timezone.now().date()
-            )
+            society = user.society
+            if not society:
+                try:
+                    society = user.resident_profile.society
+                except:
+                    pass
+            
+            if society:
+                queryset = ServiceSlot.objects.filter(
+                    service__id=service_id,
+                    service__society=society,
+                    service__is_active=True,
+                    is_available=True,
+                    slot_date__gte=timezone.now().date()
+                )
+            else:
+                queryset = ServiceSlot.objects.none()
 
         date_param = self.request.query_params.get('date')
         if date_param:
@@ -322,7 +351,18 @@ class BookingListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         slot = serializer.validated_data['slot']
         if not slot.is_available:
-            raise serializers.ValidationError("This slot is not available")
+            raise ValidationError("This slot is not available")
+            
+        user = self.request.user
+        society = user.society
+        if not society:
+            try:
+                society = user.resident_profile.society
+            except:
+                pass
+                
+        if society and slot.service.society != society:
+            raise ValidationError("You can only book services for your own society")
         
         slot.is_available = False
         slot.save(update_fields=['is_available'])
