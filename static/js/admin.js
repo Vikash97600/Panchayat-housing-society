@@ -437,7 +437,7 @@ async function loadBylaws() {
     const data = await res.json();
     const bylaws = data.results || data || [];
     
-    if (bylaws.length === 0) {
+    if (!Array.isArray(bylaws) || bylaws.length === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="5" class="text-center text-muted py-4">
@@ -452,23 +452,38 @@ async function loadBylaws() {
       return;
     }
     
-    tbody.innerHTML = bylaws.map(b => `
-      <tr>
-        <td>${b.title}</td>
+    tbody.innerHTML = '';
+    bylaws.forEach(b => {
+      const tr = document.createElement('tr');
+      tr.id = `bylaw-row-${b.id}`;
+      tr.innerHTML = `
+        <td>${b.title || '-'}</td>
         <td>${b.society_name || 'N/A'}</td>
-        <td>v${b.version}</td>
+        <td>v${b.version || '1.0'}</td>
         <td>${formatDate(b.uploaded_at)}</td>
         <td>
-          <button class="btn btn-sm btn-outline-primary" onclick="downloadBylaw(${b.id}, '${b.title}')" title="Download Bylaw PDF">
-            <i class="fas fa-download"></i> Download
-          </button>
+          <div class="btn-group" role="group">
+            <button class="btn btn-sm btn-outline-primary bylaw-download-btn" data-id="${b.id}" title="Download PDF">
+              <i class="fas fa-download me-1"></i>Download
+            </button>
+            <button class="btn btn-sm btn-danger bylaw-delete-btn" data-id="${b.id}" title="Delete Bylaw">
+              <i class="fas fa-trash me-1"></i>Delete
+            </button>
+          </div>
         </td>
-      </tr>
-    `).join('');
+      `;
+      // Safe event binding — no inline string injection
+      tr.querySelector('.bylaw-download-btn').addEventListener('click', () => downloadBylaw(b.id, b.title));
+      tr.querySelector('.bylaw-delete-btn').addEventListener('click', () => deleteBylaw(b.id, b.title));
+      tbody.appendChild(tr);
+    });
+
   } catch (e) {
+    console.error('Bylaws load error:', e);
     tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">Failed to load bylaws</td></tr>';
   }
 }
+
 
 async function uploadBylaw() {
   const file = document.getElementById('bylaw-file').files[0];
@@ -544,6 +559,35 @@ async function downloadBylaw(bylawId, bylawTitle) {
   } catch (e) {
     console.error('Error downloading bylaw:', e);
     showToast('Error downloading bylaw', 'error');
+  }
+}
+
+async function deleteBylaw(bylawId, bylawTitle) {
+  if (!confirm(`Are you sure you want to permanently delete the bylaw:\n\n"${bylawTitle}"\n\nThis action cannot be undone. The PDF file will be removed and you can upload a new one afterwards.`)) {
+    return;
+  }
+
+  try {
+    const res = await api.delete(`/bylaws/${bylawId}/delete/`);
+    const result = await res.json();
+
+    if (res.ok && result.success) {
+      showToast(result.message || 'Bylaw deleted successfully', 'success');
+      // Remove the row from the table immediately for a snappy UX
+      const row = document.getElementById(`bylaw-row-${bylawId}`);
+      if (row) {
+        row.style.transition = 'opacity 0.3s ease';
+        row.style.opacity = '0';
+        setTimeout(() => row.remove(), 300);
+      } else {
+        loadBylaws();
+      }
+    } else {
+      showToast(result.message || 'Failed to delete bylaw', 'error');
+    }
+  } catch (e) {
+    console.error('Error deleting bylaw:', e);
+    showToast('Error deleting bylaw', 'error');
   }
 }
 
@@ -787,6 +831,7 @@ window.saveUser = saveUser;
 window.loadBylaws = loadBylaws;
 window.uploadBylaw = uploadBylaw;
 window.downloadBylaw = downloadBylaw;
+window.deleteBylaw = deleteBylaw;
 window.editProfile = editProfile;
 window.saveProfile = saveProfile;
 window.saveSociety = saveSociety;

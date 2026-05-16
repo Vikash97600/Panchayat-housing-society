@@ -275,3 +275,46 @@ class BylawDownloadView(APIView):
                 'success': False,
                 'message': 'Error downloading file'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class BylawDeleteView(APIView):
+    """Admin-only: permanently soft-delete a bylaw and remove its PDF from disk."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, bylaw_id):
+        user = request.user
+        if user.role != 'admin':
+            return Response({
+                'success': False,
+                'message': 'Only admins can delete bylaws'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            bylaw = Bylaw.objects.get(id=bylaw_id, is_active=True)
+        except Bylaw.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Bylaw not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Remove PDF file from disk
+        if bylaw.pdf_path:
+            file_path = os.path.join(settings.MEDIA_ROOT, bylaw.pdf_path)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError as e:
+                    logger.warning(f"Could not delete bylaw file {file_path}: {e}")
+
+        bylaw_title = bylaw.title
+        bylaw.is_active = False
+        bylaw.save(update_fields=['is_active'])
+
+        log_audit(request.user, 'bylaw_deleted', 'Bylaw', bylaw.id,
+                  {'title': bylaw_title}, request)
+
+        return Response({
+            'success': True,
+            'data': {},
+            'message': f'Bylaw "{bylaw_title}" deleted successfully'
+        }, status=status.HTTP_200_OK)
